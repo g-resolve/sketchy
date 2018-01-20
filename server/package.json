@@ -1,0 +1,22 @@
+{
+  "name": "sketchy-server",
+  "version": "1.0.0",
+  "description": "A Sketchy Server for a Sketchy Game",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/g-resolve/sketchy.git"
+  },
+  "keywords": [
+    "sketchy"
+  ],
+  "author": "Andre Holmes",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/g-resolve/sketchy/issues"
+  },
+  "homepage": "https://github.com/g-resolve/sketchy#readme"
+}
