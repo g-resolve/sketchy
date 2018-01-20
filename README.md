@@ -1,1 +1,1 @@
-# sketchy
+# Sketchy App
