@@ -7,5 +7,5 @@ body{
 canvas{
   border: 1px solid #CCC;
   height: calc(100% - 100px);
-  
+  width: 100%;
 }

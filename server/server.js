@@ -36,8 +36,17 @@ app.use((req,res,next) => {
 const ws = new WebSocket.Server({server: app.listen(port, () => console.log("I'm listening"))});
 ws.on('connection', wsConn => {
   wsConn.on('message', data => {
-    wsConn.send('I got your message bro');
+    if(/^[\[|\{]/.test(data)) data = JSON.parse(data);
+    else return console.log("Malformed data received.");
+    Object.keys(data).forEach(k => (typeof ws[k] == 'function') && ws[k](data[k]))
+    
+    //wsConn.send('I got your message bro [' + data + ']');
   });
+  global.connections = global.connections || [];
+  global.connections.push(wsConn);
+  wsConn.on('error', () => console.log('Connection disconnected/error'));
 });
-
-
+ws.on('error', () => console.log('Socket disconnected/error'));
+ws.lp = function(data){
+  console.log("Live Path", data);
+}
