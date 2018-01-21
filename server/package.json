@@ -22,6 +22,7 @@
   "homepage": "https://github.com/g-resolve/sketchy#readme",
   "dependencies": {
     "express": "^4.16.2",
+    "express-es6-template-engine": "^2.0.2",
     "ws": "^4.0.0"
   }
 }
