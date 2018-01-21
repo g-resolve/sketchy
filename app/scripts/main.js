@@ -7,18 +7,22 @@ var app = (() => {
   Object.defineProperties(self, {canvas: {get: () => canvas}, pencil: {get: () => pencil}, ctx: {get: () => ctx},drawing: {get: () => drawing}});
   self.bootstrap = function(){
     canvasWrapper = document.querySelector('#canvas');
-    canvasWrapper.bounds = canvasWrapper.getBoundingClientRect();
     canvas = document.querySelector('canvas');
     pencil = document.querySelector('pencil');
-    pencil.bounds = pencil.getBoundingClientRect();
-    canvas.setAttribute('width',canvas.getBoundingClientRect().width);
-    canvas.setAttribute('height',canvas.getBoundingClientRect().height);
+    resetBounds();
+
     ctx = canvas.getContext('2d');
     canvasWrapper.addEventListener('mousedown', e => {});
     canvasWrapper.addEventListener('mousemove', redraw);
     canvasWrapper.addEventListener('mouseup', e => {});
-
+    windowEvents();
   };
+  function resetBounds(){
+    canvasWrapper.bounds = canvasWrapper.getBoundingClientRect();
+    pencil.bounds = pencil.getBoundingClientRect();
+    canvas.setAttribute('width',canvas.getBoundingClientRect().width);
+    canvas.setAttribute('height',canvas.getBoundingClientRect().height);
+  }
   function redraw(e){
     let {lastX, lastY} = ctx;
     let {buttons, x:currX, y:currY} = e;
@@ -36,9 +40,6 @@ var app = (() => {
     ctx.lineTo(ctx.lastX = currX, ctx.lastY = currY);
     ctx.closePath();
     ctx.stroke();
-
- 
-
   }
   function handleSocketOpen({target:api}){
     send({handshake: {guid:myGUID}})
@@ -51,11 +52,18 @@ var app = (() => {
   function send(message){
     if(message && (Array.isArray(message) || message.hasOwnProperty || (typeof message == 'string' && !/^[\[|\{]/.test(message)))) message = JSON.stringify(message);
     api.send(message);
-    console.log('SEND:',message);
   }
   function guid() {
     let u = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     return u() + u() + '-' + u() + '-' + u() + '-' + u() + '-' + u() + u() + u();
+  }
+  function windowEvents(){
+    let listeners = {
+      resize: resetBounds
+    }
+    for(let listener in listeners){
+      window.addEventListener(listener, listeners[listener]);
+    }
   }
   return self;
 })();
