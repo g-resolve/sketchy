@@ -1,36 +1,48 @@
 var app = (() => {
-  let api = new WebSocket('ws://sketchy.com/api');
+  let url = new URL(window.location);
+  let api = new WebSocket('ws://' + url.hostname + '/api');
+  let randomMessages = $.getJSON('https://api.whatdoestrumpthink.com/api/v1/quotes').promise();
+  let genericPlayerNames = ['']
   api.addEventListener('open',handleSocketOpen);
   api.addEventListener('close',handleSocketClose);
   api.addEventListener('message',handleSocketMessage);
-  let myGUID = guid(), pencil = false, canvas = false, ctx = false, drawing = false, trace = []. self = {};
-  Object.defineProperties(self, {canvas: {get: () => canvas}, pencil: {get: () => pencil}, ctx: {get: () => ctx},drawing: {get: () => drawing}});
+  let players = [], myGUID = guid(), pencil = false, canvas = false, ctx = false, drawing = false, trace = []. self = {};
+  Object.defineProperties(self, {randos: {value: (x) => getRandomUsers(x||Math.floor(Math.random()*10))}, canvas: {get: () => canvas}, players: {get: () => players}, pencil: {get: () => pencil}, ctx: {get: () => ctx},drawing: {get: () => drawing}});
   self.bootstrap = function(){
     canvasWrapper = document.querySelector('#canvas');
     canvas = document.querySelector('canvas');
-    pencil = document.querySelector('pencil');
+    pencil = document.querySelector('#pencil');
     resetBounds();
-
+ 
     ctx = canvas.getContext('2d');
     canvasWrapper.addEventListener('mousedown', e => {});
     canvasWrapper.addEventListener('mousemove', redraw);
     canvasWrapper.addEventListener('mouseup', e => {});
+    injectPlayers();
     windowEvents();
+    artificialActivities();
   };
   function resetBounds(){
     canvasWrapper.bounds = canvasWrapper.getBoundingClientRect();
     pencil.bounds = pencil.getBoundingClientRect();
-    canvas.setAttribute('width',canvas.getBoundingClientRect().width);
-    canvas.setAttribute('height',canvas.getBoundingClientRect().height);
+    canvas.setAttribute('width',canvasWrapper.getBoundingClientRect().width);
+    canvas.setAttribute('height',canvasWrapper.getBoundingClientRect().height);
   }
   function redraw(e){
     let {lastX, lastY} = ctx;
     let {buttons, x:currX, y:currY} = e;
+    //console.log(e.target);
+    if((e.y < canvasWrapper.bounds.top) || (e.x > canvasWrapper.bounds.right)){
+      return $(pencil).hide('fast');
+    }else{
+      $(pencil).show();
+    }
+    //if(e.target && (e.target.tagName == "IMG")) return;
+    !e.guid && send({lp: {guid: myGUID, buttons, color: false, lastX, lastY, currX, currY}})
     currX -= canvasWrapper.bounds.left;
     currY -= canvasWrapper.bounds.top;
-    pencil.style.top = Math.floor(currY - pencil.bounds.height);
+    pencil.style.top = Math.floor(currY + canvasWrapper.bounds.top - pencil.bounds.height);
     pencil.style.left = currX;
-    !e.guid && send({lp: {guid: myGUID, buttons, color: false, lastX, lastY, currX, currY}})
     if(!buttons) return (delete ctx.lastX) + (delete ctx.lastY);
     ctx.strokeStyle = '#333';
     ctx.lineJoin = 'round';
@@ -64,6 +76,50 @@ var app = (() => {
     for(let listener in listeners){
       window.addEventListener(listener, listeners[listener]);
     }
+  }
+  function injectPlayers(){
+    app.randos().then(({results:ps}) => {
+      let playersContainer = document.getElementById('players');
+      ps.map(p => {
+        let playerElement = $(`<player>`);
+        $(`<img src="${p.picture.thumbnail}">`).appendTo(playerElement);
+        $(`<name>`).html(p.name.first).appendTo(playerElement);
+        players.push(new Player(playerElement.appendTo(playersContainer)));
+      });
+    })
+  }
+  function artificialActivities(){
+    let baseFrequency = 1;
+
+    randomMessages.then(rM => {
+      let coinFlip = Math.round(Math.random()), prependUserName = 'USER_NAME ';
+      if(coinFlip){ prependUserName = '' }
+      let messages = Object.values(rM.messages)[coinFlip];
+      let chosenMessage = prependUserName + messages[Math.floor(Math.random() * messages.length)];
+
+    })
+  }
+  function getRandomUsers(number){
+    return $.getJSON('https://randomuser.me/api?results='+(number||1))
+    .promise();
+  }
+
+  function getRandomMessage(){
+    return randomMessages.then(rM => {
+      debugger;
+    })
+  }
+  class Player{
+    constructor(el){
+      this.element = this.e = el;
+      this.element.on('mouseover', () => $(pencil).hide('fast'));
+      return this;
+    }
+    says(message){
+      this.e.message = 
+      this.e.append($(`<message>`).html(message));
+    }
+
   }
   return self;
 })();

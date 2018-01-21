@@ -23,6 +23,7 @@
   "dependencies": {
     "express": "^4.16.2",
     "express-es6-template-engine": "^2.0.2",
+    "jquery": "^3.3.1",
     "ws": "^4.0.0"
   }
 }
