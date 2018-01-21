@@ -35,18 +35,27 @@ app.use((req,res,next) => {
 })
 const ws = new WebSocket.Server({server: app.listen(port, () => console.log("I'm listening"))});
 ws.on('connection', wsConn => {
-  wsConn.on('message', data => {
+  wsConn.on('message', function(data){
     if(/^[\[|\{]/.test(data)) data = JSON.parse(data);
     else return console.log("Malformed data received.");
-    Object.keys(data).forEach(k => (typeof ws[k] == 'function') && ws[k](data[k]))
+    Object.keys(data).forEach(k => (typeof ws[k] == 'function') && ws[k].call(this, data[k]))
     
     //wsConn.send('I got your message bro [' + data + ']');
-  });
+  }.bind(wsConn));
   global.connections = global.connections || [];
   global.connections.push(wsConn);
   wsConn.on('error', () => console.log('Connection disconnected/error'));
 });
 ws.on('error', () => console.log('Socket disconnected/error'));
 ws.lp = function(data){
-  console.log("Live Path", data);
+ for(let client of ws.clients){
+   if(client.guid !== data.guid){
+     client.send(JSON.stringify({lpRelay: data}));
+   }else{
+    
+   }
+ }
+}
+ws.handshake = function(data){
+  Object.assign(this, data);
 }
