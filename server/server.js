@@ -1,5 +1,6 @@
 const WebSocket = require('ws');
 const port = 80;
+const path = require('path');
 const fs = require('fs');
 const app = require('express')();
 const es6Renderer = require('express-es6-template-engine');
@@ -24,8 +25,12 @@ app.use((req,res,next) => {
     app.render('index', (e, html) => res.status(200).end(html));
   else
     fs.exists(appPath + req.path, (e) => {
-      !e && res.status(404).end("Not Found");
-      e && fs.createReadStream(appPath + req.path).pipe(res);
+      if(!e){
+        res.status(404).end("Not Found");
+      }else{
+        res.writeHead(200, {'Content-Type': 'text/' + path.extname(req.path).slice(1)});
+        fs.createReadStream(appPath + req.path).pipe(res);
+      }
     });
 })
 const ws = new WebSocket.Server({server: app.listen(port, () => console.log("I'm listening"))});
