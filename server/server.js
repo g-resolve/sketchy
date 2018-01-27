@@ -1,3 +1,5 @@
+const Rooms = require('./modules/rooms');
+const Words = require('./modules/words');
 const WebSocket = require('ws');
 const port = 80;
 const path = require('path');
