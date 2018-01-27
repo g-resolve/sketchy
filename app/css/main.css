@@ -3,6 +3,7 @@ body{
   color: #888;
   font-family: "Segoe UI", Arial;
   margin: 0;
+  overflow: hidden;
 }
 #wrapper{
   position: relative;
@@ -14,13 +15,15 @@ body{
   background: linear-gradient(#fff, #ccc);
 }
 h1{
-  margin: 0;
-  padding: 10px;
-  font-size: 20px;
-  grid-column: 1 / span 2;
-  text-shadow: 1px 1px 0px #090909;
+   grid-column: 1 / span 2;
+   text-shadow: 1px 1px 0px #090909;
+   margin: 0;
+   font-size: 20px;
+   padding: 10px;
+   box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.6);
+}
+h1 #title{
   color: #F44336;
-  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.6);
 }
 h1 em{
   color: #eee;
@@ -38,6 +41,9 @@ h1 em{
   display: grid;
   grid-gap: 0;
   align-content: center;
+  grid-template-columns: 1fr 150px;
+  grid-auto-flow: row;
+  justify-content: end;
 }
 #players player{
   display: grid;
@@ -53,6 +59,46 @@ h1 em{
   padding-left: 20px;
   height: 45px;
   transition: all 0.2s ease-out;
+  grid-column: 2;
+  min-width: 150px;
+}
+#players message:first-of-type{
+  margin-top: 20px;
+}
+
+#players message{
+  /* margin: 5px; */
+  position: relative;
+  /* right: -20px; */
+  grid-column: 1;
+  width: max-content;
+  max-width: calc(100vw / 2);
+  justify-self: end;
+  border: 1px solid #CCC;
+  border-radius: 20px;
+  padding: 9px;
+  text-overflow: ellipsis;
+  margin-bottom: -50px;
+  background: linear-gradient(#FFF, #EEE);
+  animation: messageLifetime 4s cubic-bezier(0, 0, 0.39, 1.49) 1s 1 both;
+  transform-origin: top right;
+  height: max-content;
+  margin-top: 5px;
+  margin-right: -20px;
+}
+@keyframes messageLifetime{
+  0%{
+    transform: scale(0);
+  }
+  5%{
+    transform: scale(1);
+  }
+  95%{
+    transform: scale(1);
+  }
+  100%{
+    transform: scale(0);
+  }
 }
 #players player:first-of-type{
   padding-top: 20px;
@@ -108,6 +154,7 @@ player message{
   position: absolute;
   background: #FFF;
   padding: 5px;
+  left: -16px;
 }
 #canvas{
   cursor: none;
