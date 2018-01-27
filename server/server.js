@@ -1,5 +1,4 @@
-const Rooms = require('./modules/rooms');
-const Words = require('./modules/words');
+const {Room, RoomCoordinator} = require('./modules/rooms');
 const WebSocket = require('ws');
 const port = 80;
 const path = require('path');
@@ -8,10 +7,11 @@ const app = require('express')();
 const es6Renderer = require('express-es6-template-engine');
 const appPath = process.cwd() + '/../app';
 const paths = {css: appPath + '/css', views: appPath + '/views', scripts: appPath + '/scripts'}
+global.RoomCoordinator = RoomCoordinator;
+global.Room = Room;
 app.engine('html', es6Renderer);
 app.set('view engine', 'html');
 app.set('views', paths.views);
-
 app.route('/api')
   .all((req, res) => {
     res.end('Just the server here...');
