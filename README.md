@@ -1,2 +1,2 @@
-# Sketchy App
+# WeScribble App
 I love you zoon
