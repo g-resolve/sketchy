@@ -42,18 +42,38 @@ class DrawBuffer extends Array{
 class Player{
   constructor(el){
     this.element = this.e = el;
+    this.e.instance = this;
     this.element.on('mouseover', () => $(pencil).hide('fast'));
     return this;
+  }
+  get name(){
+    return this.e.children('name').html();
   }
   says(message){
     message = message && Promise.resolve(message);
     message.then(m => {
-      this.e.message = this.e.message || $(`<message>`);
-      this.e.message.html(m).insertBefore(this.e);
+      M.add({from: this.name, content: m});
     });
   }
 }
-
+class Messenger{
+  constructor(){
+    this.messages = $("#messages");
+  }
+  add(m){
+    let date = new Date();
+    let timestamp = date.getHours() + ":" + ('0' + date.getMinutes()).slice(-2) + ":" + ('0' + date.getSeconds()).slice(-2);
+    let message = $(`<message from="${m.from}" timestamp="${timestamp}">`);
+    message.html(m.content).prependTo(this.messages);
+    this.cleanup();
+  }
+  cleanup(){
+    let messages = this.messages.children().toArray();
+    messages.splice(-10);
+    this.messages.get(0).scrollTo(0,this.messages.height())
+    messages.forEach(m => m.remove());
+  }
+}
 class Socket{
   constructor(){
     let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + '/api');
@@ -108,4 +128,5 @@ class Socket{
   }
 }
 const P = new PRIVATE();
+const M = new Messenger();
 const S = new Socket();

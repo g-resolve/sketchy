@@ -8,7 +8,8 @@ var app = (() => {
       drawing = false, 
       trace = [], 
       self = {},
-      
+      wrapper = false,
+      messageKnob = false,
       randomMessages = $.getJSON('https://api.whatdoestrumpthink.com/api/v1/quotes').promise(),
       genericPlayerNames = [''];
       buffer = new DrawBuffer();
@@ -26,16 +27,32 @@ var app = (() => {
     canvasWrapper = document.querySelector('#canvas');
     canvas = document.querySelector('canvas');
     pencil = document.querySelector('#pencil');
+    messageKnob = document.querySelector("#knob");
     ctx = canvas.getContext('2d');
     S.onlivepaint = redraw;
+    messageKnob.addEventListener('mousedown', startDragKnob);
     canvasWrapper.addEventListener('mousedown', e => {});
-    canvasWrapper.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove);
     canvasWrapper.addEventListener('mouseup', e => {});
     injectPlayers().then(artificialActivities);
     resetBounds();
     windowEvents();
 
   };
+  function startDragKnob(e){
+    wrapper.dragStart = e.screenY;
+    let messageHeight = $("#messages").height();
+    $("messages").prop('originalHeight',messageHeight);
+    wrapper.addEventListener('mousemove', doDragKnob)
+  }
+  function doDragKnob(e){
+    let offset = wrapper.dragStart - e.screenY;
+
+    $("#messages").height(messageHeight + offset);
+  }
+  function stopDragKnob(e){
+    wrapper.removeEventListener('mousemove', doDragKnob);
+  }
   function resetBounds(){
     canvasWrapper.bounds = canvasWrapper.getBoundingClientRect();
     pencil.bounds = pencil.getBoundingClientRect();
@@ -50,7 +67,7 @@ var app = (() => {
     //console.log(canvasWrapper.bounds.top);
     pencil.style.top = Math.floor(e.y - pencil.bounds.height);
     pencil.style.left = e.x;
-    if((e.y < canvasWrapper.bounds.top) || (e.x > canvasWrapper.bounds.right)){
+    if((e.y >= (canvasWrapper.bounds.bottom - 12)) || (e.y < canvasWrapper.bounds.top) || (e.x > canvasWrapper.bounds.right)){
       return $(pencil).hide('fast');
     }else{
       $(pencil).show();
@@ -121,7 +138,7 @@ var app = (() => {
     clearInterval(app.artificialInterval);
     app.artificialInterval = setInterval(() => {
       setTimeout(artificialActivities, Math.random() * 3000);
-    }, 1000)
+    }, 500)
     
   }
   function getRandomUsers(number){

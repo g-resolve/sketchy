@@ -50,6 +50,8 @@ ws.on('connection', wsConn => {
     //wsConn.send('I got your message bro [' + message + ']');
   }.bind(wsConn));
   wsConn.on('error', () => console.log('Connection disconnected/error'));
+  wsConn.on('close', () => console.log('Connection closed'));
+
   wsConn.send(JSON.stringify({guid: wsConn.guid}));
   global.connections = global.connections || [];
   global.connections.push(wsConn);
