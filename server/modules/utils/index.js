@@ -11,4 +11,8 @@ class PRIVATE extends WeakMap{
 function serialize( obj ) {
   return '?'+Object.keys(obj).reduce(function(a,k){a.push(k+'='+encodeURIComponent(obj[k]));return a},[]).join('&')
 }
-module.exports = {PRIVATE: new PRIVATE(), serialize};
+function guid() {
+    let u = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    return u() + u() + '-' + u() + '-' + u() + '-' + u() + '-' + u() + u() + u();
+}
+module.exports = {PRIVATE: new PRIVATE(), serialize, guid};

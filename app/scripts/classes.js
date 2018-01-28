@@ -1,5 +1,5 @@
 
-const DEFAULT_FPS = 30;
+const DEFAULT_FPS = 1000;
 class PRIVATE extends WeakMap{
   constructor(){
     super();
@@ -20,23 +20,23 @@ class DrawBuffer extends Array{
     return this;
   }
   start(){
-    if(this.stopped || !this.length) return false; 
+    if(!this.length) return false; 
     requestAnimationFrame(this.start.bind(this));
     this.now = Date.now();
     let delta = this.now - this.then;
     if ((delta > this.interval) && S) {
       this.then = this.now - (delta % this.interval);
       let inkDrop = this.shift();
-      S.send({livePaint: inkDrop});
+      S.send(inkDrop).then();
       //inkDrop.livePaint.buttons && console.log(inkDrop.livePaint.currX, inkDrop.livePaint.currY, delta, this.interval, (delta % this.interval));
     }
   }
   stop(){
-    this.stopped = true;
+    return this.stopped = true;
   }
   queue(data){
      data && this.push(data);
-     this.start();
+     this.start(true);
   }
 }
 class Player{
@@ -59,22 +59,16 @@ class Socket{
     let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + '/api');
     this.guid = guid();
     this.pending = {};
-    let onOpen = this.onOpen.bind(this);
-    let onClose = this.onClose.bind(this);
-    let onMessage = this.onMessage.bind(this);
-    ws.addEventListener('open',onOpen);
-    ws.addEventListener('close',onClose);
-    ws.addEventListener('message',onMessage);
-
+    ws.addEventListener('open',this.onopen.bind(this));
+    ws.addEventListener('close',this.onclose.bind(this));
+    ws.addEventListener('message',this.onmessage.bind(this));
   }
   
-  onOpen(){
-    this.send({handshake: {guid:this.guid}}).then(result => {});
-  }
+  onopen(){}
 
-  onClose(){}
+  onclose(){}
 
-  onMessage({data:message}){
+  onmessage({data:message}){
     if(!/^[\[|\{]/.test(message)) return console.warn("Invalid message received");
     message = JSON.parse(message);
     let pending;
@@ -82,19 +76,27 @@ class Socket{
       pending.done(message);
     }else{
       Object.keys(message).forEach(k => {
-        let customEvent = new CustomEvent(k.toLowerCase(), message[k]);
-        document.body.dispatchEvent(customEvent);
+        let eventData = message[k];
+        if(typeof this['on'+k.toLowerCase()] == 'function'){
+          this['on' + k.toLowerCase()](eventData);
+        }
+        let customEvent = new CustomEvent(k.toLowerCase(), {detail: eventData});
+        window.dispatchEvent(customEvent);
+        
       })
     }
-   
+  }
+  onguid(guid){
+    this.guid = guid;
   }
   send(message){
-
+    if(!P(this).ws.readyState) return Promise.resolve(false);
     let confirm = (() => {let done, promise = new Promise(r => done = r); return {done,promise}})();
     let mid = Math.round(Math.random()*Math.pow(20,6)), ws = P(this).ws;
     this.pending[mid] = confirm;
     if(message && (Array.isArray(message) || message.hasOwnProperty || (typeof message == 'string' && !/^[\[|\{]/.test(message)))){
       message.mid = mid;
+      message.guid = this.guid;
       message = JSON.stringify(message);
       ws.readyState && ws.send(message);  
     }else{

@@ -22,11 +22,12 @@ var app = (() => {
     drawing: {get: () => drawing}
   });
   self.bootstrap = function(){
+    wrapper = document.querySelector('#wrapper');
     canvasWrapper = document.querySelector('#canvas');
     canvas = document.querySelector('canvas');
     pencil = document.querySelector('#pencil');
     ctx = canvas.getContext('2d');
-    canvasWrapper.addEventListener('livepaint', e => { debugger; });
+    S.onlivepaint = redraw;
     canvasWrapper.addEventListener('mousedown', e => {});
     canvasWrapper.addEventListener('mousemove', handleMouseMove);
     canvasWrapper.addEventListener('mouseup', e => {});
@@ -49,23 +50,27 @@ var app = (() => {
     //console.log(canvasWrapper.bounds.top);
     pencil.style.top = Math.floor(e.y - pencil.bounds.height);
     pencil.style.left = e.x;
-  }
-  function redraw(e){
-    let {lastX, lastY} = ctx;
-    let {buttons, x:currX, y:currY, guid:receivedDraw} = e;
-    //console.log(e.target);
     if((e.y < canvasWrapper.bounds.top) || (e.x > canvasWrapper.bounds.right)){
       return $(pencil).hide('fast');
     }else{
       $(pencil).show();
     }
+  }
+  function redraw(e){
+    let {lastX, lastY} = ctx;
+    let {buttons, x:currX, y:currY, guid:receivedDraw} = e;
+    //console.log(e.target);
+
     //if(e.target && (e.target.tagName == "IMG")) return;
     if(!receivedDraw){
-      buffer.queue({livePaint: {guid: myGUID, buttons, color: false, lastX, lastY, currX, currY}})
+      console.log("Sending Draw");
+      buffer.queue({livePaint: {buttons, color: false, lastX, lastY, x:currX, y:currY}})
+    }else{
+      console.log("Received a Draw");
     }
     currX -= canvasWrapper.bounds.left;
     currY -= canvasWrapper.bounds.top;
-
+     //console.log(e);
     if(!buttons) return (delete ctx.lastX) + (delete ctx.lastY);
     ctx.strokeStyle = '#333';
     ctx.lineJoin = 'round';
