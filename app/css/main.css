@@ -10,7 +10,7 @@ body{
   display: grid;
   grid-template-rows: 40px 1fr;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
   grid-template-columns: 1fr max-content;
   background: linear-gradient(#fff, #ccc);
 }
@@ -165,6 +165,7 @@ player message{
 }
 #canvas, #canvas *{
   user-select: none;
+  overflow: hidden;
 }
 #pencil{
   width: 35vw;

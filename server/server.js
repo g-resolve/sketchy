@@ -37,27 +37,33 @@ app.use((req,res,next) => {
 })
 const ws = new WebSocket.Server({server: app.listen(port, () => console.log("I'm listening"))});
 ws.on('connection', wsConn => {
-  wsConn.on('message', function(data){
-    if(/^[\[|\{]/.test(data)) data = JSON.parse(data);
-    else return console.log("Malformed data received.");
-    Object.keys(data).forEach(k => (typeof ws[k] == 'function') && ws[k].call(this, data[k]))
+  wsConn.on('message', function(message){
+    if(/^[\[|\{]/.test(message)) message = JSON.parse(message);
+    else return console.log("Malformed message received.");
+    let mid = message.mid;
+    Promise.all(Object.keys(message).filter(k => (typeof ws[k] == 'function')).map(k => ws[k].call(this, message[k])))
+      .then(results => wsConn.send(JSON.stringify({mid, results})));
     
-    //wsConn.send('I got your message bro [' + data + ']');
+    //wsConn.send('I got your message bro [' + message + ']');
   }.bind(wsConn));
   global.connections = global.connections || [];
   global.connections.push(wsConn);
   wsConn.on('error', () => console.log('Connection disconnected/error'));
 });
 ws.on('error', () => console.log('Socket disconnected/error'));
-ws.lp = function(data){
+//Live Paint
+ws.livePaint = (message) => new Promise(resolve => {
  for(let client of ws.clients){
-   if(client.guid !== data.guid){
-     client.send(JSON.stringify({lpRelay: data}));
+   if(client.guid !== message.guid){
+     client.send(JSON.stringify(message));
    }else{
     
    }
  }
-}
-ws.handshake = function(data){
-  Object.assign(this, data);
-}
+ resolve('Live paint sent');
+});
+ws.handshake = (message) => new Promise(resolve => {
+  console.log('handshake', message);
+  Object.assign(this, message);
+  resolve('Handshake received');
+});
