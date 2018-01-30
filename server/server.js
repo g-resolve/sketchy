@@ -1,5 +1,5 @@
 const {guid} = require('./modules/utils');
-const {Room, RoomCoordinator} = require('./modules/rooms');
+const {Room} = require('./modules/rooms');
 const WebSocket = require('ws');
 const port = 80;
 const path = require('path');
@@ -8,7 +8,6 @@ const app = require('express')();
 const es6Renderer = require('express-es6-template-engine');
 const appPath = process.cwd() + '/../app';
 const paths = {css: appPath + '/css', views: appPath + '/views', scripts: appPath + '/scripts'}
-global.RoomCoordinator = RoomCoordinator;
 global.Room = Room;
 app.engine('html', es6Renderer);
 app.set('view engine', 'html');

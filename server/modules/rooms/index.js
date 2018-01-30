@@ -1,38 +1,20 @@
 const {WordSmith} = require('../words');
-const {PRIVATE:P} = require('../utils');
+const {PRIVATE:P, Coordinator} = require('../utils');
+const {Player} = require('../player');
 const fs = require('fs');
-class RoomCoordinator{
-  constructor(){
-    this.rosterFile = __dirname + '/rooms.json';
-  }
-  set roomRoster(r){
-    return new Promise(res => fs.writeFile(this.rosterFile, JSON.stringify(r), res))
-  }
-  get roomRoster(){
-    let roomRoster = (() => (promise = new Promise(r => done = r)) && {done,promise})()
-    fs.readFile(this.rosterFile, (err, data) => {
-      if(err) return roomRoster.done([]);
-      roomRoster.done(JSON.parse(data.toString()));
-    });
-    return roomRoster.promise;
-  }
-  assignPlayerToRoom(){
 
-  }
-  removePlayerFromRoom(){
-
-  }
-
-  room(r){
-    return new Room();
-  }
-}
 class Room{
   constructor(config){
-    if(config){
-      Object.apply(this, config);
+    let defaultConfig = {
+      seats: 10,
+      rounds: 4,
+      players: [],
+      ranked: true,
+      turnTime: 30000,
+      languageFilter: true,
+      name: "WeScribble Room " + Date.now()
     }
-    P(this).players = ["Andre", "Zoon"];
+    Object.apply(this, defaultConfig, config||{});
   }
   get WS(){
     P(this).WS = P(this).WS || new WordSmith();
@@ -42,7 +24,7 @@ class Room{
     return this.WS.word;
   }
   get name(){
-    return "Generic Room Name " + Date.now();
+    return P(this).name || "Generic Room Name " + Date.now();
   }
   clear(){
 
@@ -50,8 +32,8 @@ class Room{
   save(){
 
   }
-  addPlayer(){
-
+  addPlayer(player){
+    
   }
   removePlayer(){
     
@@ -59,5 +41,9 @@ class Room{
   get players(){
     return P(this).players;
   }
+  set players(v){
+    if(Array.isArray(v) && v.every(p => p instanceof Player))
+    return P(this).players = v;
+  }
 }
-module.exports = {Room, RoomCoordinator}
+module.exports = {Room}
