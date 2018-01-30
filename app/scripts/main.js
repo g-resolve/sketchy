@@ -8,6 +8,7 @@ var app = (() => {
       drawing = false, 
       trace = [], 
       self = {},
+      playerWrapper = false,
       wrapper = false,
       messageKnob = false,
       randomMessages = $.getJSON('https://api.whatdoestrumpthink.com/api/v1/quotes').promise(),
@@ -28,6 +29,7 @@ var app = (() => {
     canvas = document.querySelector('canvas');
     pencil = document.querySelector('#pencil');
     messageKnob = document.querySelector("#knob");
+    playerWrapper = document.querySelector('#players');
     ctx = canvas.getContext('2d');
     S.onlivepaint = redraw;
     messageKnob.addEventListener('mousedown', startDragKnob);
@@ -42,32 +44,41 @@ var app = (() => {
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;
     let messageHeight = $("#messages").height();
-    $("messages").prop('originalHeight',messageHeight);
-    wrapper.addEventListener('mousemove', doDragKnob)
+    $("#messages").prop('originalHeight',messageHeight);
+    wrapper.addEventListener('mousemove', doDragKnob);
+    wrapper.addEventListener('mouseup', stopDragKnob);
   }
   function doDragKnob(e){
     let offset = wrapper.dragStart - e.screenY;
-
-    $("#messages").height(messageHeight + offset);
+    let newHeight = $("#messages").prop('originalHeight') + offset;
+    $("#messages").height(newHeight);
+    
   }
   function stopDragKnob(e){
     wrapper.removeEventListener('mousemove', doDragKnob);
+    wrapper.removeEventListener('mouseup', stopDragKnob);
+    delete wrapper.dragStart;
+    resetBounds();
+    
   }
   function resetBounds(){
     canvasWrapper.bounds = canvasWrapper.getBoundingClientRect();
-    pencil.bounds = pencil.getBoundingClientRect();
+    //pencil.bounds = pencil.getBoundingClientRect();
     canvas.setAttribute('width',canvasWrapper.getBoundingClientRect().width);
     canvas.setAttribute('height',canvasWrapper.getBoundingClientRect().height);
+    playerWrapper.bounds = playerWrapper.getBoundingClientRect();
   }
   function handleMouseMove(e){
+    if(wrapper.dragStart) return;
     movePencil(e);
     redraw(e);
   }
   function movePencil(e){
     //console.log(canvasWrapper.bounds.top);
-    pencil.style.top = Math.floor(e.y - pencil.bounds.height);
-    pencil.style.left = e.x;
-    if((e.y >= (canvasWrapper.bounds.bottom - 12)) || (e.y < canvasWrapper.bounds.top) || (e.x > canvasWrapper.bounds.right)){
+    pencil.bounds = pencil.getBoundingClientRect();
+    pencil.style.top = Math.floor(e.pageY - pencil.bounds.height );
+    pencil.style.left = e.pageX;
+    if((e.pageY >= (canvasWrapper.bounds.bottom - 12)) || (e.pageY < canvasWrapper.bounds.top) || (e.pageX > playerWrapper.bounds.left)){
       return $(pencil).hide('fast');
     }else{
       $(pencil).show();
@@ -138,7 +149,7 @@ var app = (() => {
     clearInterval(app.artificialInterval);
     app.artificialInterval = setInterval(() => {
       setTimeout(artificialActivities, Math.random() * 3000);
-    }, 500)
+    }, 3000)
     
   }
   function getRandomUsers(number){
