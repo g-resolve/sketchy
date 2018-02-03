@@ -1,5 +1,6 @@
 const {guid} = require('./modules/utils');
 const {Room} = require('./modules/rooms');
+const {Player} = require('./modules/player');
 const WebSocket = require('ws');
 const port = 80;
 const path = require('path');
@@ -9,6 +10,7 @@ const es6Renderer = require('express-es6-template-engine');
 const appPath = process.cwd() + '/../app';
 const paths = {css: appPath + '/css', views: appPath + '/views', scripts: appPath + '/scripts'}
 global.Room = Room;
+global.Player = Player;
 app.engine('html', es6Renderer);
 app.set('view engine', 'html');
 app.set('views', paths.views);
@@ -23,10 +25,8 @@ app.route('/api')
 
   })
 app.use((req,res,next) => {
-  if(req.path == '/')
-    app.render('index', (e, html) => res.status(200).end(html));
-  else
-    fs.exists(appPath + req.path, (e) => {
+  if(path.extname(req.path)){
+    return fs.exists(appPath + req.path, (e) => {
       if(!e){
         res.status(404).end("Not Found");
       }else{
@@ -34,6 +34,8 @@ app.use((req,res,next) => {
         fs.createReadStream(appPath + req.path).pipe(res);
       }
     });
+  }
+  app.render('index', (e, html) => res.status(200).end(html));
 })
 const ws = new WebSocket.Server({server: app.listen(port, () => console.log("I'm listening"))});
 ws.on('connection', wsConn => {

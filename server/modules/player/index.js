@@ -1,4 +1,5 @@
 const {PRIVATE:P,Coordinator} = require('../utils');
+const {Room} = require('../rooms');
 class Player{
   constructor(){
     

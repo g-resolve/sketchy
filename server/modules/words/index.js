@@ -17,7 +17,7 @@ let updateWordBank = (wB) => new Promise(res => {
 class WordSmith{
   constructor(){return this}
   init(){
-    return wordBank.promise
+    return wordBank.promise;
   }
   get word(){
     return this.init().then((wordBank)=>{

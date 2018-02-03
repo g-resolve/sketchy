@@ -24,6 +24,27 @@ var app = (() => {
     drawing: {get: () => drawing}
   });
   self.bootstrap = function(){
+    Router.addRoutes({
+      '/': {
+        init(){
+          console.log("HOME");
+        },
+        view: 'main'
+      },
+      'room/wow': {
+        init(){
+          console.log("ROOM/WOW", arguments);
+        },
+        view: 'room'
+      },
+      'account/overview': {
+        init(){
+          console.log("ACCOUNT/OVERVIEW");
+        },
+        view: 'account'
+      }
+    })
+    /*
     wrapper = document.querySelector('#wrapper');
     canvasWrapper = document.querySelector('#canvas');
     canvas = document.querySelector('canvas');
@@ -39,7 +60,7 @@ var app = (() => {
     injectPlayers().then(artificialActivities);
     resetBounds();
     windowEvents();
-
+    */
   };
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;

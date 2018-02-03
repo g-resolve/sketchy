@@ -32,18 +32,26 @@ class Room{
   save(){
 
   }
+  get playerCount(){
+    return this.players.length;
+  }
+  get isFull(){
+    return this.playerCount >= this.seats;
+  }
   addPlayer(player){
-    
+    if(!player instanceof Player) return false;
+    P(this).players.push(player);
   }
   removePlayer(){
     
   }
   get players(){
-    return P(this).players;
+    return P(this).players || [];
   }
   set players(v){
     if(Array.isArray(v) && v.every(p => p instanceof Player))
-    return P(this).players = v;
+      return P(this).players = v;
+    else return false;
   }
 }
 module.exports = {Room}
