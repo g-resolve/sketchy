@@ -24,15 +24,28 @@ class ROUTER{
         this.go();
     }
     go(_path_){
-        let path, len = _path_ && _path_.length;
+        let path = _path_ || this.path;
+        let len = path.length;
         if(!len || len <= 1) path = '/';
-        else path = Object.keys(this.routes).sort((a,b) => a > b ? -1 : 1).find(path => new RegExp(_path_||path, 'ig').test(_path_?path:this.path))
+        else if(!this.routes[path]) path = Object.keys(this.routes).sort((a,b) => a > b ? -1 : 1).find(p => new RegExp(path, 'ig').test(p) || new RegExp(p, 'ig').test(path))
         this.traverse(path);
+    }
+    clearTemplates(){
+        return $('.wrapper,link[for]').remove();
+    }
+    getTemplate(name){
+        let template = $(`.wrapper.${name}`);
+        template = template.length && Promise.resolve(template);
+        return template ? template : $.get(`/views/${name}.html`).promise().then(t => {
+            let ss = [$(`link[for=${name}]`),$(`<link rel="stylesheet" href="/css/${name}.css" for="${name}">`)].find(ss => ss.length)
+            return new Promise(res => ss.appendTo(document.head).on('load', res.bind(null, $(`<section class="wrapper ${name}">`).html(t))));
+        });
+        //return new Promise(res => $("<div>").load(`/views/${name}.html`, res))
     }
     traverse(path, pathObj){
         pathObj = pathObj || this.routes[path] || (path = '/') && {view: 'main', init: () => {}};
         pathObj.init = pathObj.init || (() => {});
-        return $("#content").load(`/views/${pathObj.view}.html`, data => pathObj.init())
+        return this.getTemplate(pathObj.view).then(t => t.appendTo("#content")).then(pathObj.init.bind(null, this.params)); //$("#content").load(`/views/${pathObj.view}.html`, data => pathObj.init(this.params))
         //else return pathObj.init();
     }
 }

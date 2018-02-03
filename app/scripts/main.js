@@ -31,13 +31,19 @@ var app = (() => {
         },
         view: 'main'
       },
-      'room/wow': {
+      '/login': {
         init(){
+          console.log("Login");
+        },
+        view: 'login'
+      },
+      '/room/*': {
+        init(args){
           console.log("ROOM/WOW", arguments);
         },
         view: 'room'
       },
-      'account/overview': {
+      '/account/overview': {
         init(){
           console.log("ACCOUNT/OVERVIEW");
         },
@@ -62,6 +68,11 @@ var app = (() => {
     windowEvents();
     */
   };
+  self.empty = () => Router.clearTemplates() && self;
+  self.show = template => Router.getTemplate(template).then(t => t.prependTo('#content'))
+  self.showlogin = () => Router.getTemplate('login').then(html => {
+    $('<section>').html(html).prependTo('#content');
+  })
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;
     let messageHeight = $("#messages").height();
