@@ -24,7 +24,9 @@ class ROUTER{
         this.go();
     }
     go(_path_){
-        let path = Object.keys(this.routes).sort((a,b) => a > b ? -1 : 1).find(path => new RegExp(_path_||path, 'ig').test(_path_?path:this.path))
+        let path, len = _path_ && _path_.length;
+        if(!len || len <= 1) path = '/';
+        else path = Object.keys(this.routes).sort((a,b) => a > b ? -1 : 1).find(path => new RegExp(_path_||path, 'ig').test(_path_?path:this.path))
         this.traverse(path);
     }
     traverse(path, pathObj){
