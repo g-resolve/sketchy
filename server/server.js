@@ -69,8 +69,9 @@ app.all('/api/logout', (req, res, next) => {
   req.logout();
   res.end('Bye! :p');
 })
-app.param('endpoint', (req,res,next,endpoint) => req.endpoint = endpoint);
+app.param('endpoint', (req,res,next,endpoint) => (req.endpoint = endpoint) && next());
 app.all('/api/:endpoint/callback', (req,res,next)=>{
+  debugger;
   res.end('Done');
 })
 
