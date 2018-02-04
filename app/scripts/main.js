@@ -11,6 +11,8 @@ var app = (() => {
       playerWrapper = false,
       wrapper = false,
       messageKnob = false,
+      content = $("#content"),
+      overlay = $("#overlay"),
       randomMessages = $.getJSON('https://api.whatdoestrumpthink.com/api/v1/quotes').promise(),
       genericPlayerNames = [''];
       buffer = new DrawBuffer();
@@ -68,10 +70,21 @@ var app = (() => {
     windowEvents();
     */
   };
+
   self.empty = () => Router.clearTemplates() && self;
-  self.show = template => Router.getTemplate(template).then(t => t.prependTo('#content'))
+  self.show = (template, options={}) => (parent = options.overlay?overlay.cleanup():content) && Router.getTemplate(template).then(t => t.appendTo(parent)).then(t => {
+    if(!options || !options.overlay) content.attr('class','p' + content.children().toArray().indexOf(t.get(0)));
+  })
+  self.cleanup = template => {
+    $(`link[for='${template}'], .wrapper.${template}`).remove();
+    let children = content.children().toArray();
+    let index = (content.attr('class')||'').slice(1);
+    if(!children[index] && children.length){
+      content.attr('class', 'p' + (children.length-1));
+    }
+  };
   self.showlogin = () => Router.getTemplate('login').then(html => {
-    $('<section>').html(html).prependTo('#content');
+    $('<section>').html(html).appendTo(content);
   })
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;

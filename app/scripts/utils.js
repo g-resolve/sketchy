@@ -1,7 +1,12 @@
 const appURL = new URL(window.location);
+const content = $("#content");
 function guid() {
     let u = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     return u() + u() + '-' + u() + '-' + u() + '-' + u() + '-' + u() + u() + u();
+}
+$.fn.cleanup = function(){
+    this.children().toArray().forEach(c => $(`link[for='${c.name}']`).add(c).remove())
+    return this;
 }
 class ROUTER{
     constructor(){
@@ -38,14 +43,14 @@ class ROUTER{
         template = template.length && Promise.resolve(template);
         return template ? template : $.get(`/views/${name}.html`).promise().then(t => {
             let ss = [$(`link[for=${name}]`),$(`<link rel="stylesheet" href="/css/${name}.css" for="${name}">`)].find(ss => ss.length)
-            return new Promise(res => ss.appendTo(document.head).on('load', res.bind(null, $(`<section class="wrapper ${name}">`).html(t))));
+            return new Promise(res => ss.appendTo(document.head).on('load', res.bind(null, $(`<section class="wrapper ${name}">`).prop('name',name).html(t))));
         });
         //return new Promise(res => $("<div>").load(`/views/${name}.html`, res))
     }
     traverse(path, pathObj){
         pathObj = pathObj || this.routes[path] || (path = '/') && {view: 'main', init: () => {}};
         pathObj.init = pathObj.init || (() => {});
-        return this.getTemplate(pathObj.view).then(t => t.appendTo("#content")).then(pathObj.init.bind(null, this.params)); //$("#content").load(`/views/${pathObj.view}.html`, data => pathObj.init(this.params))
+        return this.getTemplate(pathObj.view).then(t => !t.prop('isConnected') && t.appendTo(content) || t).then(pathObj.init.bind(null, this.params)); //$("#content").load(`/views/${pathObj.view}.html`, data => pathObj.init(this.params))
         //else return pathObj.init();
     }
 }
