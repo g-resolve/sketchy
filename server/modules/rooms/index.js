@@ -14,7 +14,7 @@ class Room{
       languageFilter: true,
       name: "WeScribble Room " + Date.now()
     }
-    Object.apply(this, defaultConfig, config||{});
+    Object.assign(this, defaultConfig, config||{});
   }
   get WS(){
     P(this).WS = P(this).WS || new WordSmith();
@@ -22,9 +22,6 @@ class Room{
   }
   get newWord(){
     return this.WS.word;
-  }
-  get name(){
-    return P(this).name || "Generic Room Name " + Date.now();
   }
   clear(){
 
@@ -42,8 +39,12 @@ class Room{
     if(!player instanceof Player) return false;
     P(this).players.push(player);
   }
-  removePlayer(){
-    
+  removePlayer(player){
+    let players = P(this).players;
+    let index = players.indexOf(player);
+    if(index > -1){
+      players.splice(index, 1);
+    }
   }
   get players(){
     return P(this).players || [];

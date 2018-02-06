@@ -18,18 +18,21 @@ module.exports = {
   FConfig: {
     clientID: "215154845701552",
     clientSecret: "c9a84ab75709e2a2831f3233eac9818e",
-    callbackURL: "http://ctscribble.andrezoon.com/api/facebook/callback"
+    callbackURL: "http://nyscribble.andrezoon.com/api/facebook/callback",
+    profileFields: ['id', 'displayName', 'photos', 'emails']
   },
   TConfig: {
-    consumerKey: "70pf0IArGVNEMaFFdjd5QruRsA",
+    consumerKey: "70pf0IArGVNEMaFFdjd5QruRA",
     consumerSecret: "mf4XfEowjqRP7TI8wKdpweN7SjZT21wXsHqRhPyKP4nE4P2abc",
-    callbackURL: "http://ctscribble.andrezoon.com/api/twitter/callback"
+    callbackURL: "http://nyscribble.andrezoon.com/api/twitter/callback",
+    userProfileURL  : 'https://api.twitter.com/1.1/account/verify_credentials.json?include_email=true',
+    profileFields: ['id', 'displayName', 'photos', 'emails']
   },
   GConfig: {
-    consumerKey: "325591313256-te9bgr41u58ne2tk2gk0il9a61f5sqsk.apps.googleusercontent.com",
-    consumerSecret: "B_L6c9wLcSqMGKCjA74M8o9f",
-    callbackURL: "http://wescribble.com/api/google/callback",
-    returnURL: "http://ctscribble.andrezoon.com/api/google/callback"
+    clientID: "325591313256-te9bgr41u58ne2tk2gk0il9a61f5sqsk.apps.googleusercontent.com",
+    clientSecret: "2s9vr3YTiX_8Sb2U3rAxSObv",
+    callbackURL: "http://nyscribble.andrezoon.com/api/google/callback",
+    profileFields: ['id', 'displayName', 'photos', 'emails']
   },
   LConfig: (username, password, done) => {
     console.log("Local Config:", username, password);

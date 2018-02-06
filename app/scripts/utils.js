@@ -1,5 +1,5 @@
-const appURL = new URL(window.location);
-const content = $("#content");
+self.appURL = new URL(window.location);
+self.content = $("#content");
 function guid() {
     let u = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     return u() + u() + '-' + u() + '-' + u() + '-' + u() + '-' + u() + u() + u();
@@ -14,7 +14,7 @@ class ROUTER{
         this.url = new URL(window.location);
         this.path = this.url.pathname;
         [this.base,this.sub] = this.path.split('/').filter(v=>v);
-        this.params = Array.from(this.url.searchParams.entries()).reduce((obj, e) => {obj[e[0]] = e[1]; return obj},{});
+        this.params = Array.from(this.url.searchParams && this.url.searchParams.entries() || []).reduce((obj, e) => {obj[e[0]] = e[1]; return obj},{});
         this.params.subURL = this.sub;
         this.params.baseURL = this.base;
     }
@@ -50,7 +50,7 @@ class ROUTER{
     traverse(path, pathObj){
         pathObj = pathObj || this.routes[path] || (path = '/') && {view: 'main', init: () => {}};
         pathObj.init = pathObj.init || (() => {});
-        return this.getTemplate(pathObj.view).then(t => !t.prop('isConnected') && t.appendTo(content) || t).then(pathObj.init.bind(null, this.params)); //$("#content").load(`/views/${pathObj.view}.html`, data => pathObj.init(this.params))
+        return this.getTemplate(pathObj.view).then(t => !t.prop('isConnected') && t.appendTo(self.content) || t).then(pathObj.init.bind(null, this.params)); //$("#content").load(`/views/${pathObj.view}.html`, data => pathObj.init(this.params))
         //else return pathObj.init();
     }
 }

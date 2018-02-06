@@ -1,5 +1,6 @@
 const {guid} = require('./modules/utils');
 const {Room} = require('./modules/rooms');
+const {Coordinator} = require('./modules/coordinator');
 const {Player} = require('./modules/player');
 const press = require('node-minify');
 const WebSocket = require('ws');
@@ -9,7 +10,7 @@ const fs = require('fs');
 const app = require('express')();
 const passport = require('passport');
 const LStrategy = require('passport-local').Strategy;
-const GStrategy = require('passport-google').Strategy;
+const GStrategy = require('passport-google-oauth20').Strategy;
 const FStrategy = require('passport-facebook').Strategy;
 const TStrategy = require('passport-twitter').Strategy;
 const {GConfig,FConfig,TConfig,LConfig} = require('./modules/passport');
@@ -22,6 +23,7 @@ let [DEV,PROD] = [ENV=='dev', ENV=='prod'];
 global.Room = Room;
 global.Player = Player;
 global.press = press;
+global.Coordinator = Coordinator;
 app.engine('html', es6Renderer);
 app.set('view engine', 'html');
 app.set('views', paths.views);
@@ -37,16 +39,15 @@ app.set('views', paths.views);
 
 //   })
 passport.use('local-auth', new LStrategy(LConfig));
-passport.use('facebook-auth', new FStrategy(FConfig, (accessToken, refreshToken, profile, done) => {
-  debugger;
-  done(null, {id: "FB Guy"});
-}));
-passport.use('twitter-auth', new TStrategy(TConfig, (req, token, tokenSecret, profile, done) => {
-  debugger;
-}));
-passport.use('google-auth', new GStrategy(GConfig, (token, tokenSecret, profile, done) => {
-  debugger;
-}));
+passport.use('facebook-auth', new FStrategy(FConfig, processAuthUser));
+passport.use('twitter-auth', new TStrategy(TConfig, processAuthUser));
+passport.use('google-auth', new GStrategy(GConfig, processAuthUser));
+function processAuthUser(){
+  let args = Array.from(arguments);
+  let [profile, done] = args.slice(-2);
+  let token = args.find(a => typeof a == "string" && !/\-/.test(a));
+  return done(null, Object.assign(profile, {token}));
+}
 passport.serializeUser((user, done) => {
   console.log("Serialize:", user);
   done(null, user.id);
@@ -55,13 +56,13 @@ passport.deserializeUser((id, done) => {
   console.log("Deserialize:", id);
   done(null, {id});
 })
-app.use(session({ secret: "drawingisfun", resave: true, saveUninitialized: true}));
+app.use(session({ secret: "drawingisfun", resave: false, saveUninitialized: true}));
 //app.use(bodyParser.urlencoded({ extended: false }));
 app.use(passport.initialize());
 app.use(passport.session());
-app.all('/api/fblogin', passport.authenticate('facebook-auth'), (req, res) => {
-  res.end(JSON.stringify(req.user));
-})
+app.all('/api/flogin', passport.authenticate('facebook-auth', {scope: ['email']}));
+app.all('/api/glogin', passport.authenticate('google-auth', {scope: ['email']}));
+app.all('/api/tlogin', passport.authenticate('twitter-auth', {scope: ['email']}));
 app.all('/api/login', passport.authenticate('local-auth'), (req, res) => {
   res.end(JSON.stringify(req.user));
 })
@@ -71,12 +72,16 @@ app.all('/api/logout', (req, res, next) => {
 })
 app.param('endpoint', (req,res,next,endpoint) => (req.endpoint = endpoint) && next());
 app.all('/api/:endpoint/callback', (req,res,next)=>{
-  debugger;
-  res.end('Done');
+  passport.authenticate(req.endpoint + '-auth', (error, user) => {
+    req.session.user = user;
+    next();
+  })(req,res,next);
+
 })
 
 app.use((req,res,next) => {
   if(path.extname(req.path)){
+    console.log("Regular Request:", req.session);
     return fs.exists(appPath + req.path, (e) => {
       if(!e){
         res.status(404).end("Not Found");
