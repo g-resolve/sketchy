@@ -1,8 +1,8 @@
 const {PRIVATE:P,Coordinator} = require('../utils');
 const {Room} = require('../rooms');
 class Player{
-  constructor(){
-    
+  constructor(config){
+    Object.assign(this, config);
   }
   joinRoom(rid){
    

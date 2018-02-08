@@ -1,3 +1,4 @@
+
 const {Room} = require('../rooms');
 const fs = require('fs');
 const DEFAULT_ROOM_SEED = 5;

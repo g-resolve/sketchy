@@ -41,13 +41,31 @@ class DrawBuffer extends Array{
 }
 class Player{
   constructor(el){
-    this.element = this.e = el;
-    this.e.instance = this;
+    if(el instanceof jQuery){
+      //el = el;
+    }else if(typeof el == 'object'){
+      Object.assign(this, el);
+      el = this.element;
+    }else{
+      el = $(`<player>`);
+    }
+    this.element = el;
+    this.element.instance = this;
     this.element.on('mouseover', () => $(pencil).hide('fast'));
     return this;
   }
   get name(){
-    return this.e.children('name').html();
+    return getOrMake('name').html();
+  }
+  set name(v){
+    return getOrMake('name').html(v);
+  }
+  getOrMake(tag){
+    let element = this.element.children(tag);
+    if(!element.length){
+      element = $(`<${tag}>`).appendTo(this.element);
+    }
+    return element;
   }
   says(message){
     message = message && Promise.resolve(message);
@@ -75,8 +93,8 @@ class Messenger{
   }
 }
 class Socket{
-  constructor(){
-    let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + '/api');
+  constructor(token){
+    let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + '/api?token='+(token||''));
     this.guid = guid();
     this.pending = {};
     ws.addEventListener('open',this.onopen.bind(this));

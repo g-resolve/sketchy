@@ -4,6 +4,8 @@ const {Coordinator} = require('./modules/coordinator');
 const {Player} = require('./modules/player');
 const press = require('node-minify');
 const WebSocket = require('ws');
+const http = require('http');
+const request = require('request');
 const port = 80;
 const path = require('path');
 const fs = require('fs');
@@ -15,6 +17,8 @@ const FStrategy = require('passport-facebook').Strategy;
 const TStrategy = require('passport-twitter').Strategy;
 const {GConfig,FConfig,TConfig,LConfig} = require('./modules/passport');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
+const sessionParser = session({ name: 'wescribble', store: new FileStore({reapInterval: -1}), secret: "drawingisfun", resave: false, saveUninitialized: false});
 const es6Renderer = require('express-es6-template-engine');
 const appPath = process.cwd() + '/../app';
 const paths = {css: appPath + '/css', views: appPath + '/views', scripts: appPath + '/scripts'}
@@ -55,33 +59,51 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((id, done) => {
   console.log("Deserialize:", id);
   done(null, {id});
+});
+
+app.param('endpoint', (req,res,next,endpoint) => (req.endpoint = endpoint) && next());
+
+app.get('/login/:endpoint', (req, res, next) => {
+  request({
+    headers: {'User-Agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'},
+    url: req.protocol + '://' + req.hostname + '/api/' + req.endpoint
+  }).pipe(res);
 })
-app.use(session({ secret: "drawingisfun", resave: false, saveUninitialized: true}));
+app.use(sessionParser);
 //app.use(bodyParser.urlencoded({ extended: false }));
 app.use(passport.initialize());
 app.use(passport.session());
-app.all('/api/flogin', passport.authenticate('facebook-auth', {scope: ['email']}));
+app.all('/api/flogin', passport.authenticate('facebook-auth', {display: 'popup', scope: ['email']}));
 app.all('/api/glogin', passport.authenticate('google-auth', {scope: ['email']}));
 app.all('/api/tlogin', passport.authenticate('twitter-auth', {scope: ['email']}));
 app.all('/api/login', passport.authenticate('local-auth'), (req, res) => {
   res.end(JSON.stringify(req.user));
 })
 app.all('/api/logout', (req, res, next) => {
-  req.logout();
-  res.end('Bye! :p');
-})
-app.param('endpoint', (req,res,next,endpoint) => (req.endpoint = endpoint) && next());
+  req.session.destroy(function(err) {
+    if (err) {
+      console.error(err);
+    } else {
+      res.clearCookie('wescribble');
+      req.logout();
+      res.redirect('/');
+    }
+  });
+});
 app.all('/api/:endpoint/callback', (req,res,next)=>{
   passport.authenticate(req.endpoint + '-auth', (error, user) => {
-    req.session.user = user;
-    next();
+    if(!error) req.session.player = new Player(user);
+    res.redirect('/');
   })(req,res,next);
-
 })
-
+app.get('/api/user', (req,res,next) => {
+  if(req.session.player) return res.json(req.session.player);
+  return res.status(401).end('Unauthorized');
+});
 app.use((req,res,next) => {
   if(path.extname(req.path)){
-    console.log("Regular Request:", req.session);
+    //req.session.views = req.session.views ? (req.session.views + 1) : 1;
+    //console.log("regular session:", req.session);
     return fs.exists(appPath + req.path, (e) => {
       if(!e){
         res.status(404).end("Not Found");
@@ -101,9 +123,11 @@ app.use((req,res,next) => {
   app.render('index', (e, html) => res.status(200).end(html));
 })
 const ws = new WebSocket.Server({server: app.listen(port, () => console.log("I'm listening"))});
-ws.on('connection', wsConn => {
+ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
+  console.warn("socket session:", req.session);
   wsConn.guid = guid();
-  wsConn.on('message', function(message){
+  wsConn.on('message', function(player, message){
+    console.log("Message from:",player,"|Message:",message);
     if(/^[\[|\{]/.test(message)) message = JSON.parse(message);
     else return console.log("Malformed message received.");
     let mid = message.mid;
@@ -112,16 +136,17 @@ ws.on('connection', wsConn => {
       .then(results => wsConn.send(JSON.stringify({mid, results})));
     
     //wsConn.send('I got your message bro [' + message + ']');
-  }.bind(wsConn));
+  }.bind(wsConn, req.session.player));
   wsConn.on('error', () => console.log('Connection disconnected/error'));
   wsConn.on('close', () => console.log('Connection closed'));
-
   wsConn.send(JSON.stringify({guid: wsConn.guid}));
   global.connections = global.connections || [];
   global.connections.push(wsConn);
-});
+}));
 ws.on('error', () => console.log('Socket disconnected/error'));
-
+ws.joinRoom = (messge, guid) => new Promise(resolve => {
+  //Coordinator.rooms
+})
 //Live Paint
 ws.livePaint = (message, guid) => new Promise(resolve => {
  for(let client of ws.clients){

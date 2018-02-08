@@ -26,32 +26,7 @@ var app = (() => {
     drawing: {get: () => drawing}
   });
   self.bootstrap = function(){
-    Router.addRoutes({
-      '/': {
-        init(){
-          console.log("HOME");
-        },
-        view: 'main'
-      },
-      '/login': {
-        init(){
-          console.log("Login");
-        },
-        view: 'login'
-      },
-      '/room/*': {
-        init(args){
-          console.log("ROOM/WOW", arguments);
-        },
-        view: 'room'
-      },
-      '/account/overview': {
-        init(){
-          console.log("ACCOUNT/OVERVIEW");
-        },
-        view: 'account'
-      }
-    })
+
     /*
     wrapper = document.querySelector('#wrapper');
     canvasWrapper = document.querySelector('#canvas');
