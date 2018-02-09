@@ -21,18 +21,20 @@ class ROUTER{
         this.params.baseURL = this.base;
         this.addRoutes({
           '/': {
-            init(){
-              console.log("HOME");
+            init(params){
+              return 'Route initialized';
             },
             view: 'main'
           },
           '/login': {
             init(){
               $('buttons button').on('click', e => {
-               $(`<iframe src="/api/${e.target.id}"></iframe>`).appendTo('#login');
+                $("#login h3").html('Got it!');
+                $('buttons').html(`<p>We\'ll log you in using ${e.target.innerHTML}... one moment.</p>`)
+                setTimeout(() => window.location.href = "/api/" + e.target.id, 2000);
+               //$(`<iframe src="/api/${e.target.id}"></iframe>`).appendTo('#login');
                 e.preventDefault();
               })
-              console.log("Login");
             },
             view: 'login'
           },
@@ -54,14 +56,19 @@ class ROUTER{
         for(let k in obj){
             this.routes[k] = obj[k];
         }
-        this.init().then(this.go.bind(this));
+        //this.init().then(()=>this.show('/'));
     }
     init(){
-        return new Promise(resolve => $.get('/api/user').promise().then(data => {
-                return true;
-            }, fail =>{
-                return this.show('/').then(() => this.show('login', {overlay: true}));
-            }));
+        return $.get('/api/user').promise().then(data => {
+            if(!data.emails && !data.email){
+                return Promise.reject(this.rejectAuth());
+            }
+            document.body.setAttribute('authorized','');
+            return this.params.user = data;
+        }, this.rejectAuth.bind(this)).then(()=>this.show('/'));
+    }
+    rejectAuth(){
+        return this.show('/').then(() => this.show('login', {overlay: true}));
     }
     addRoute(path, obj){
         this.routes[path] = obj;
@@ -73,7 +80,9 @@ class ROUTER{
         let parent = options.overlay?self.overlay.cleanup():self.content;
         return this.getTemplate(path.view).then(t => t.appendTo(parent)).then(t => {
             if(!options || !options.overlay) self.content.attr('class','p' + self.content.children().toArray().indexOf(t.get(0)));
-            path.init.call(null, this.params);
+            let init = path.init.call(null, this.params);
+            if(!(init instanceof Promise)){ init = Promise.resolve(init) }
+            return init.then(r => this.params);
         })
     }
     go(_path_){

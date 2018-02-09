@@ -7,6 +7,13 @@ body{
   height: 100%;
   width: 100%;
 }
+body[authorized]{
+
+}
+
+ws-logout{
+  display: none;
+}
 #inner-body{
   position: relative;
   display: block;
@@ -32,7 +39,11 @@ h1{
    margin: 0;
    font-size: 20px;
    padding: 10px;
+   display: flex;
+   flex-flow: row;
    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.6);
+   flex-wrap: nowrap;
+   justify-content: space-between;
 }
 h1 #title{
   color: #F44336;
@@ -47,7 +58,15 @@ h1 em{
 h1 #fps{
   display: none;
 }
-
+  [logout]{ display: none; }
+  body[authorized] [logout]{
+    display: block;
+    font-size: 14px;
+    font-weight: normal;
+    flex-shrink: 2;
+    cursor: pointer;
+    align-self: center;
+  }
 #overlay{
   position: absolute;
   top: 0;
@@ -72,4 +91,8 @@ h1 #fps{
 #content.p3{margin-left: -300vw;}
 #content *{
   box-sizing: border-box;
+}
+
+ws-slot span{
+  padding-right:5px;
 }

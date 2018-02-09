@@ -25,8 +25,9 @@ var app = (() => {
     ctx: {get: () => ctx},
     drawing: {get: () => drawing}
   });
-  self.bootstrap = function(){
-
+  self.bootstrap = function(initParams){
+    templateFill(initParams);
+    templateActions();
     /*
     wrapper = document.querySelector('#wrapper');
     canvasWrapper = document.querySelector('#canvas');
@@ -46,21 +47,35 @@ var app = (() => {
     */
   };
 
-  self.empty = () => Router.clearTemplates() && self;
-  self.show = (template, options={}) => (parent = options.overlay?overlay.cleanup():content) && Router.getTemplate(template).then(t => t.appendTo(parent)).then(t => {
-    if(!options || !options.overlay) content.attr('class','p' + content.children().toArray().indexOf(t.get(0)));
-  })
-  self.cleanup = template => {
-    $(`link[for='${template}'], .wrapper.${template}`).remove();
-    let children = content.children().toArray();
-    let index = (content.attr('class')||'').slice(1);
-    if(!children[index] && children.length){
-      content.attr('class', 'p' + (children.length-1));
-    }
-  };
-  self.showlogin = () => Router.getTemplate('login').then(html => {
-    $('<section>').html(html).appendTo(content);
-  })
+//   self.empty = () => Router.clearTemplates() && self;
+//   self.show = (template, options={}) => (parent = options.overlay?overlay.cleanup():content) && Router.getTemplate(template).then(t => t.appendTo(parent)).then(t => {
+//     if(!options || !options.overlay) content.attr('class','p' + content.children().toArray().indexOf(t.get(0)));
+//   })
+//   self.cleanup = template => {
+//     $(`link[for='${template}'], .wrapper.${template}`).remove();
+//     let children = content.children().toArray();
+//     let index = (content.attr('class')||'').slice(1);
+//     if(!children[index] && children.length){
+//       content.attr('class', 'p' + (children.length-1));
+//     }
+//   };
+//   self.showlogin = () => Router.getTemplate('login').then(html => {
+//     $('<section>').html(html).appendTo(content);
+//   })
+  function templateFill(params){
+      let username, birthday = "";
+      try{username = params.user._json.name.familyName;}
+      catch(e){ username = params.displayName}
+      let greeting = username && "Welcome back" || "Welcome to WeScribble!";
+      let parsed = {username, greeting}; 
+      $('ws-slot').toArray().forEach(s => {
+        let children = Array.from(s.attributes).map(a => (parsed[a.name] && {key: a.name, value:parsed[a.name]})).filter(v=>v).map(c => $(`<span class="${c.key}">${c.value}</span>`))
+        children.length && $(s).empty().append(children);
+      });
+  }
+  function templateActions(){
+    $('[logout]').on('click', () => window.location.href='/api/logout');
+  }
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;
     let messageHeight = $("#messages").height();
@@ -187,5 +202,4 @@ var app = (() => {
   }
   return self;
 })();
-
-app.bootstrap();
+Router.init().then(app.bootstrap);
