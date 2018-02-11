@@ -94,7 +94,7 @@ class Messenger{
 }
 class Socket{
   constructor(token){
-    let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + '/api?token='+(token||''));
+    let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname);
     this.guid = guid();
     this.pending = {};
     ws.addEventListener('open',this.onopen.bind(this));

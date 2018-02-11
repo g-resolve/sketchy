@@ -1,47 +1,45 @@
-const {PRIVATE:P,Coordinator} = require('../utils');
+const {PRIVATE:P,Coordinator, guid} = require('../utils');
 const {Room} = require('../rooms');
 class Player{
   constructor(config){
-    Object.assign(this, config);
+    let defaultConfig = {
+      id: guid(),
+      name: 'Anonymous',
+      email: false,
+      currentRoom: undefined,
+      level: 0,
+      gamesPlayed: 0,
+      placedFirst: 0,
+      placedSecond: 0,
+      placedThird: 0,
+      guesses: 0,
+      correctGuesses: 0,
+      kicks: 0,
+      banned: false,
+      timesFiltered: 0,
+      wpm: 0,
+      atg: 0,
+      lastRoom: undefined
+
+    }
+    Object.assign(this, defaultConfig, config || {});
+    return this;
   }
   joinRoom(rid){
    
   }
-  get id(){
-    return P(this).id;
+  get socket(){
+    return P(this).socket;
   }
-  set id(v){
-    return P(this).id = v;
+  set socket(socket){
+    P(this).socket = socket;
   }
-  get name(){
-    return P(this).name;
-  }
-  set name(v){
-    return P(this).name = v;
-  }
-  get email(){
-    return P(this).email;
-  }
-  set email(v){
-    return P(this).email = v;
-  }
-  get stats(){
-    return P(this).stats;
-  }
-  set stats(v){
-    return P(this).stats = v;
-  }
-  get photo(){
-    return P(this).photo;
-  }
-  set photo(v){
-    return P(this).photo = v;
-  }
-  get room(){
-    return P(this).room;
-  }
-  set room(v){
-    return P(this).room = v;
+  static parse(session){
+    session.player = session.player || new Player();
+    if(!(session.player instanceof Player)){
+      session.player = new Player(session.player);
+    }
+    return session;
   }
 }
 module.exports = {Player};

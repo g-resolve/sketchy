@@ -1,0 +1,69 @@
+#rooms{
+  display: flex;
+  justify-content: space-between;
+}
+room{
+  background: #F44336;
+  display: grid;
+  flex: 1 0 120px;
+  min-width: 120px;
+  grid: [r1-start] "name name" 24px [r1-end] [r2-start] "players state" 24px [r2-end] / auto auto;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  color: #EEE;
+}
+room:after{
+  content: '';
+  display: block;
+  width: calc(100% - 10px);
+  left: 5px;
+  height: calc(100% - 10px);
+  top: 5px;
+  background: #EEE;
+  border-radius: 100px;
+  position: absolute;
+  z-index: 0;
+  transform: scale(0);
+  transition: all 0.25s cubic-bezier(0.82, 1.66, 0.6, 0.77);
+}
+room:hover{
+  color: #F44336;
+}
+room:hover:after{
+  transform: scale(1);
+  border-radius: 5px;
+}
+room:not(:last-child){
+  margin-right: 10px;
+}
+room > * {display: none;position: relative;z-index: 1;}
+room > name{
+  grid-area: name;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+room > players{
+  grid-area: players;
+  display: block;
+}
+room > players:before{
+  content: 'Players: ';
+}
+room > players:empty:after{
+  content: '0';
+}
+room > state{
+  grid-area: state;
+  display: block;
+  position: relative;
+}
+room > state[value="0"]{
+
+}
+room > state[value="0"]:after{
+  display: block;
+}

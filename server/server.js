@@ -4,12 +4,14 @@ const {Coordinator} = require('./modules/coordinator');
 const {Player} = require('./modules/player');
 const press = require('node-minify');
 const WebSocket = require('ws');
+const {URL} = require('url');
 const http = require('http');
 const request = require('request');
 const port = 80;
 const path = require('path');
 const fs = require('fs');
 const app = require('express')();
+const rm = require('run-middleware')(app);
 const passport = require('passport');
 const LStrategy = require('passport-local').Strategy;
 const GStrategy = require('passport-google-oauth20').Strategy;
@@ -28,6 +30,7 @@ global.Room = Room;
 global.Player = Player;
 global.press = press;
 global.Coordinator = Coordinator;
+
 app.engine('html', es6Renderer);
 app.set('view engine', 'html');
 app.set('views', paths.views);
@@ -73,6 +76,14 @@ app.use(sessionParser);
 //app.use(bodyParser.urlencoded({ extended: false }));
 app.use(passport.initialize());
 app.use(passport.session());
+app.use((req,res,next) => {
+  req.session = req.session || {};
+  req.session.player = req.session.player || new Player();
+  if(!(req.session.player instanceof Player)){
+    req.session.player = new Player(req.session.player);
+  }
+  next();
+})
 app.all('/api/flogin', passport.authenticate('facebook-auth', {display: 'popup', scope: ['email']}));
 app.all('/api/glogin', passport.authenticate('google-auth', {scope: ['email']}));
 app.all('/api/tlogin', passport.authenticate('twitter-auth', {scope: ['email']}));
@@ -92,7 +103,7 @@ app.all('/api/logout', (req, res, next) => {
 });
 app.all('/api/:endpoint/callback', (req,res,next)=>{
   passport.authenticate(req.endpoint + '-auth', (error, user) => {
-    if(!error) req.session.player = new Player(user);
+    if(!error) Object.assign(req.session.player, user);
     res.redirect('/');
   })(req,res,next);
 })
@@ -100,6 +111,18 @@ app.get('/api/user', (req,res,next) => {
   if(req.session.player) return res.json(req.session.player);
   return res.status(401).end('Unauthorized');
 });
+app.get('/api/rooms', (req,res,next) => {
+  return res.json(Coordinator.rooms);
+});
+app.param('rid', (req,res,next,rid)=>(req.rid=rid) && next());
+app.get('/socket/room/:rid', (req,res,next)=>{
+  debugger;
+})
+app.get('/socket/rooms', (req,res,next)=>{
+  debugger;
+  next();
+  //Coordinator.addListener()
+})
 app.use((req,res,next) => {
   if(path.extname(req.path)){
     //req.session.views = req.session.views ? (req.session.views + 1) : 1;
@@ -122,9 +145,22 @@ app.use((req,res,next) => {
   }
   app.render('index', (e, html) => res.status(200).end(html));
 })
-const ws = new WebSocket.Server({server: app.listen(port, () => console.log("I'm listening"))});
+global.server = app.listen(port, () => console.log("I'm listening"));
+const ws = new WebSocket.Server({server: global.server});
+global.playerSocketMap = new Map();
 ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
+  Player.parse(req.session);
+  global.playerSocketMap.set(req.session.player.id, req.session.player.socket = wsConn);
+
+  let url = new URL(req.headers.origin + req.url);
+  let params = Array.from(url.searchParams.entries()).reduce((obj,p) => Object.assign(obj, {[p[0]]:p[1]}), {})
+  if(url.pathname.slice(1).length){
+    app.runMiddleware('/socket' + url.pathname, params, () => {
+      debugger;
+    });
+  }
   console.warn("socket session:", req.session);
+  
   wsConn.guid = guid();
   wsConn.on('message', function(player, message){
     console.log("Message from:",player,"|Message:",message);
@@ -139,7 +175,7 @@ ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
   }.bind(wsConn, req.session.player));
   wsConn.on('error', () => console.log('Connection disconnected/error'));
   wsConn.on('close', () => console.log('Connection closed'));
-  wsConn.send(JSON.stringify({guid: wsConn.guid}));
+  //wsConn.send(JSON.stringify({guid: wsConn.guid}));
   global.connections = global.connections || [];
   global.connections.push(wsConn);
 }));

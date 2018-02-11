@@ -33,6 +33,7 @@
     "passport-local": "^1.0.0",
     "passport-twitter": "^1.0.4",
     "request": "^2.83.0",
+    "run-middleware": "^0.6.6",
     "session-file-store": "^1.2.0",
     "ws": "^4.0.0"
   }

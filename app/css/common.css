@@ -73,9 +73,11 @@ h1 #fps{
   width: 100vw;
   height: 100vh;
   background: none;
+  z-index: 1;
 }
+#overlay:empty{display: none;}
 #overlay:not(:empty) ~ *{
-  filter: blur(2px) opacity(0.5);
+  filter: blur(2px) opacity(1);
 }
 #content{
   padding: 0px;

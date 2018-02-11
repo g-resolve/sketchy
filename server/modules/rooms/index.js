@@ -1,4 +1,5 @@
 const {WordSmith} = require('../words');
+const WebSocket = require('ws');
 const {PRIVATE:P, Coordinator, guid} = require('../utils');
 const {Player} = require('../player');
 const fs = require('fs');
@@ -23,11 +24,28 @@ class Room{
       languageFilter: true,
       name: "WeScribble Room " + id
     }
+    Object.defineProperty(this, 'players', {configurable: true, writeable: true, enumerable: true,
+      get(){
+        return P(this).players || [];
+      },
+      set(v){
+        if(Array.isArray(v) && v.every(p => p instanceof Player)) return P(this).players = v;
+        else return false;
+      }
+    });
     Object.assign(this, defaultConfig, config||{});
+    this.socket.on('connection',() => {
+      debugger;
+    })
+    return this;
   }
   get WS(){
     P(this).WS = P(this).WS || new WordSmith();
     return P(this).WS;
+  }
+  get socket(){
+    return {on: () => {}};
+    return P(this).socket  = P(this).socket || new WebSocket.Server({port: 1024, path: this.id})  
   }
   get newWord(){
     return this.WS.word;
@@ -77,13 +95,6 @@ class Room{
       players.splice(index, 1);
     }
   }
-  get players(){
-    return P(this).players || [];
-  }
-  set players(v){
-    if(Array.isArray(v) && v.every(p => p instanceof Player))
-      return P(this).players = v;
-    else return false;
-  }
+
 }
 module.exports = {Room}
