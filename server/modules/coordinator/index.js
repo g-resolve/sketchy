@@ -14,8 +14,9 @@ class Coordinator{
         this.rooms = rooms.map(r => new Room(r));
     });
   }
-  addListener(){
-    
+  addToLobby(player){
+    this.lobby.push(player);
+    return this.rooms;
   }
   get rosterFile(){ return __dirname + '/rooms.json'}
   set roomRoster(r){

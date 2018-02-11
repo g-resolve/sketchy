@@ -29,10 +29,16 @@ class Player{
    
   }
   get socket(){
-    return P(this).socket;
+    return P(this).socket || global.playerSocketMap.get(this.id) || {send: ()=>{}};
   }
   set socket(socket){
+    let oldSocket = P(this).socket || global.playerSocketMap.get(this.id);
+    oldSocket && oldSocket.terminate();
     P(this).socket = socket;
+  }
+  send(data){
+    console.log('Sent:',data);
+    this.socket.send(JSON.stringify(data));
   }
   static parse(session){
     session.player = session.player || new Player();

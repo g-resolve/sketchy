@@ -119,9 +119,8 @@ app.get('/socket/room/:rid', (req,res,next)=>{
   debugger;
 })
 app.get('/socket/rooms', (req,res,next)=>{
-  debugger;
+  req.player.send({rooms: Coordinator.addToLobby(req.player)});
   next();
-  //Coordinator.addListener()
 })
 app.use((req,res,next) => {
   if(path.extname(req.path)){
@@ -150,16 +149,18 @@ const ws = new WebSocket.Server({server: global.server});
 global.playerSocketMap = new Map();
 ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
   Player.parse(req.session);
-  global.playerSocketMap.set(req.session.player.id, req.session.player.socket = wsConn);
+  let player = req.session.player;
+  console.log("Player ID:", player.id);
+  global.playerSocketMap.set(player.id, wsConn);
 
   let url = new URL(req.headers.origin + req.url);
   let params = Array.from(url.searchParams.entries()).reduce((obj,p) => Object.assign(obj, {[p[0]]:p[1]}), {})
   if(url.pathname.slice(1).length){
-    app.runMiddleware('/socket' + url.pathname, params, () => {
-      debugger;
+    app.runMiddleware('/socket' + url.pathname, Object.assign(params, {player}), () => {
+     
     });
   }
-  console.warn("socket session:", req.session);
+  //console.warn("socket session:", req.session);
   
   wsConn.guid = guid();
   wsConn.on('message', function(player, message){

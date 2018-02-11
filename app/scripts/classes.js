@@ -94,19 +94,30 @@ class Messenger{
 }
 class Socket{
   constructor(token){
-    let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname);
     this.guid = guid();
     this.pending = {};
+    this.go('/');
+  }
+  go(path){
+    if(!path){ return false }
+    if(!/^\//.test(path)){ path = '/' + path }
+    let oldSocket = P(this).ws;
+    if(oldSocket){ oldSocket.close() }
+    let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + path);
     ws.addEventListener('open',this.onopen.bind(this));
     ws.addEventListener('close',this.onclose.bind(this));
     ws.addEventListener('message',this.onmessage.bind(this));
   }
-  
-  onopen(){}
+  onopen(e){
+    console.info('Opened:', e.currentTarget.url);
+  }
 
-  onclose(){}
+  onclose(e){
+    console.info('Closed:', e.currentTarget.url);
+  }
 
   onmessage({data:message}){
+    debugger;
     if(!/^[\[|\{]/.test(message)) return console.warn("Invalid message received");
     message = JSON.parse(message);
     let pending;
