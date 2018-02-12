@@ -28,6 +28,12 @@ class Player{
   joinRoom(rid){
    
   }
+  get email(){
+    return P(this).email;
+  }
+  set email(v){
+    return P(this).email = v;
+  }
   get socket(){
     return P(this).socket || global.playerSocketMap.get(this.id) || {send: ()=>{}};
   }

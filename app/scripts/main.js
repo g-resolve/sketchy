@@ -65,7 +65,7 @@ var app = (() => {
 //   })
   function listRooms(){
     $.getJSON('/api/rooms').promise().then(rooms => {
-      rooms = rooms.map(room => $(`<room>`).append(() => Object.keys(room).map(k => $(`<${k} value="${room[k]}">`).html(room[k]).on('click',Router.show.bind(Router, '/room/')))));
+      rooms = rooms.map(room => $(`<room>`).append(() => Object.keys(room).map(k => $(`<${k} value="${room[k]}">`).html(room[k]).on('click',R.show.bind(R, '/room/')))));
       $("#rooms").append(rooms);
     }, error => {console.error(error)})
   }
@@ -209,4 +209,4 @@ var app = (() => {
   }
   return self;
 })();
-Router.init().then(app.bootstrap, e => {console.warn("Unable to init app", e)});
+R.init().then(app.bootstrap, e => {console.warn("Unable to init app", e)});

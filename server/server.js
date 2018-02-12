@@ -112,11 +112,12 @@ app.get('/api/user', (req,res,next) => {
   return res.status(401).end('Unauthorized');
 });
 app.get('/api/rooms', (req,res,next) => {
-  return res.json(Coordinator.rooms);
+  return res.json(Coordinator.getRooms());
 });
 app.param('rid', (req,res,next,rid)=>(req.rid=rid) && next());
 app.get('/socket/room/:rid', (req,res,next)=>{
-  debugger;
+  Coordinator.addToRoom(req.player, req.rid)
+  next();
 })
 app.get('/socket/rooms', (req,res,next)=>{
   req.player.send({rooms: Coordinator.addToLobby(req.player)});

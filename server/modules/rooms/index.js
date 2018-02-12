@@ -26,10 +26,13 @@ class Room{
     }
     Object.defineProperty(this, 'players', {configurable: true, writeable: true, enumerable: true,
       get(){
-        return P(this).players || [];
+        return P(this).players && Array.from(P(this).players.values()) || [];
       },
       set(v){
-        if(Array.isArray(v) && v.every(p => p instanceof Player)) return P(this).players = v;
+        if(Array.isArray(v) && v.every(p => p instanceof Player)){
+          v = v.map(v => [v.id,v]);
+          return P(this).players = new Map(v);
+        } 
         else return false;
       }
     });
@@ -86,14 +89,16 @@ class Room{
   }
   addPlayer(player){
     if(!player instanceof Player) return false;
-    P(this).players.push(player);
+    P(this).players.set(player.id, player);
+    player.send({room: this})
   }
   removePlayer(player){
     let players = P(this).players;
-    let index = players.indexOf(player);
-    if(index > -1){
-      players.splice(index, 1);
-    }
+    players.delete(player.id);
+//     let index = players.indexOf(player);
+//     if(index > -1){
+//       players.splice(index, 1);
+//     }
   }
 
 }

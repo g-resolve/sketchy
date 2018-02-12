@@ -4,19 +4,29 @@ const fs = require('fs');
 const DEFAULT_ROOM_SEED = 13;
 class Coordinator{
   constructor(seed){
-    this.rooms = [];
-    this.lobby = [];
+    this.rooms = new Map();
+    this.lobby = new Map();
     seed = seed || DEFAULT_ROOM_SEED;
     this.roomRoster.then(rooms => {
         if(!rooms.length){
             rooms = new Array(seed).fill({})
         }
-        this.rooms = rooms.map(r => new Room(r));
+        rooms.forEach(r => {
+          r = new Room(r);
+          this.rooms.set(r.id, r);
+        });
     });
   }
   addToLobby(player){
-    this.lobby.push(player);
-    return this.rooms;
+    this.lobby.set(player.id, player);
+    return Array.from(this.rooms.values());
+  }
+  getRooms(){
+    return Array.from(this.rooms.values());
+  }
+  addToRoom(player, rid){
+    let room = this.rooms.get(rid);
+    return room.addPlayer(player);
   }
   get rosterFile(){ return __dirname + '/rooms.json'}
   set roomRoster(r){
