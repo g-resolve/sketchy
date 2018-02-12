@@ -1,18 +1,25 @@
 #rooms{
   display: flex;
-  justify-content: space-between;
+  justify-content: left;
+  flex-wrap: wrap;
+  /* border: 1px solid #F00; */
+  margin-left: -10px;
+  margin-right: -10px;
 }
 room{
-  background: #F44336;
+  background: #E65100;
   display: grid;
-  flex: 1 0 120px;
-  min-width: 120px;
+  flex: 0 0 calc((100% / 3) - 10px);
+  min-width: 200px;
   grid: [r1-start] "name name" 24px [r1-end] [r2-start] "players state" 24px [r2-end] / auto auto;
   padding: 10px;
   border-radius: 8px;
   cursor: pointer;
   position: relative;
   color: #EEE;
+  /* flex-wrap: wrap; */
+  margin: 5px;
+  max-width: 300px;
 }
 room:after{
   content: '';
@@ -36,7 +43,8 @@ room:hover:after{
   border-radius: 5px;
 }
 room:not(:last-child){
-  margin-right: 10px;
+  /* margin-right: 10px; */
+  /* margin-bottom: 10px; */
 }
 room > * {display: none;position: relative;z-index: 1;}
 room > name{
@@ -65,5 +73,4 @@ room > state[value="0"]{
 
 }
 room > state[value="0"]:after{
-  display: block;
-}
+  displ

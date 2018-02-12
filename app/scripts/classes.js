@@ -96,17 +96,24 @@ class Socket{
   constructor(token){
     this.guid = guid();
     this.pending = {};
-    this.go('/');
+//     this.go('/').then(() => {
+//       console.log("Socket path traversed");
+//     });
   }
   go(path){
+    let promise = getAsync();
     if(!path){ return false }
     if(!/^\//.test(path)){ path = '/' + path }
     let oldSocket = P(this).ws;
     if(oldSocket){ oldSocket.close() }
     let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + path);
-    ws.addEventListener('open',this.onopen.bind(this));
+    ws.addEventListener('open',(e) => {
+      promise.then(e);
+      this.onopen(e);
+    });
     ws.addEventListener('close',this.onclose.bind(this));
     ws.addEventListener('message',this.onmessage.bind(this));
+    return promise.await;
   }
   onopen(e){
     console.info('Opened:', e.currentTarget.url);
@@ -115,9 +122,13 @@ class Socket{
   onclose(e){
     console.info('Closed:', e.currentTarget.url);
   }
-
+  subscribe(el, method, callback){
+    if(!el || !callback) return false;
+    let subs = P(this).subscriptions = P(this).subscriptions || {};
+    subs[method] = [].concat.apply(subs[method]||[], [el]);
+    el.addEventListener(method, callback);
+  }
   onmessage({data:message}){
-    debugger;
     if(!/^[\[|\{]/.test(message)) return console.warn("Invalid message received");
     message = JSON.parse(message);
     let pending;
@@ -126,6 +137,10 @@ class Socket{
     }else{
       Object.keys(message).forEach(k => {
         let eventData = message[k];
+        let subscribers, subs = P(this).subscriptions;
+        if(subscribers = subs[k]){
+          subscribers.forEach(sub => sub.dispatchEvent(new CustomEvent(k, {detail: eventData})))
+        }
         if(typeof this['on'+k.toLowerCase()] == 'function'){
           this['on' + k.toLowerCase()](eventData);
         }
@@ -135,12 +150,15 @@ class Socket{
       })
     }
   }
+  onrooms(rooms){
+    
+  }
   onguid(guid){
     this.guid = guid;
   }
   send(message){
     if(!P(this).ws.readyState) return Promise.resolve(false);
-    let confirm = (() => {let done, promise = new Promise(r => done = r); return {done,promise}})();
+    let confirm = getAsync();
     let mid = Math.round(Math.random()*Math.pow(20,6)), ws = P(this).ws;
     this.pending[mid] = confirm;
     if(message && (Array.isArray(message) || message.hasOwnProperty || (typeof message == 'string' && !/^[\[|\{]/.test(message)))){
@@ -151,7 +169,7 @@ class Socket{
     }else{
       console.warn('Invalid data');
     }
-    return confirm.promise
+    return confirm.await;
     //console.log(api.readyState);
     
   }

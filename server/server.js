@@ -156,9 +156,7 @@ ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
   let url = new URL(req.headers.origin + req.url);
   let params = Array.from(url.searchParams.entries()).reduce((obj,p) => Object.assign(obj, {[p[0]]:p[1]}), {})
   if(url.pathname.slice(1).length){
-    app.runMiddleware('/socket' + url.pathname, Object.assign(params, {player}), () => {
-     
-    });
+    app.runMiddleware('/socket' + url.pathname, Object.assign(params, {player}), () => {});
   }
   //console.warn("socket session:", req.session);
   
@@ -169,8 +167,8 @@ ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
     else return console.log("Malformed message received.");
     let mid = message.mid;
     let guid = message.guid;
-    Promise.all(Object.keys(message).filter(k => (typeof ws[k] == 'function')).map(k => ws[k].call(this, message[k], guid)))
-      .then(results => wsConn.send(JSON.stringify({mid, results})));
+    //Promise.all(Object.keys(message).filter(k => (typeof ws[k] == 'function')).map(k => ws[k].call(this, message[k], guid)))
+    //  .then(results => wsConn.send(JSON.stringify({mid, results})));
     
     //wsConn.send('I got your message bro [' + message + ']');
   }.bind(wsConn, req.session.player));

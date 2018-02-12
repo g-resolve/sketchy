@@ -26,10 +26,9 @@ var app = (() => {
     drawing: {get: () => drawing}
   });
   self.bootstrap = function(initParams){
-    listRooms();
+    //listRooms();
     templateFill(initParams);
     templateActions();
-
     /*
     wrapper = document.querySelector('#wrapper');
     canvasWrapper = document.querySelector('#canvas');
@@ -210,4 +209,4 @@ var app = (() => {
   }
   return self;
 })();
-Router.init().then(app.bootstrap);
+Router.init().then(app.bootstrap, e => {console.warn("Unable to init app", e)});
