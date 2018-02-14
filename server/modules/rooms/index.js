@@ -1,5 +1,4 @@
 const {WordSmith} = require('../words');
-const WebSocket = require('ws');
 const {PRIVATE:P, Coordinator, guid} = require('../utils');
 const {Player} = require('../player');
 const fs = require('fs');
@@ -37,18 +36,12 @@ class Room{
       }
     });
     Object.assign(this, defaultConfig, config||{});
-    this.socket.on('connection',() => {
-      debugger;
-    })
+
     return this;
   }
   get WS(){
     P(this).WS = P(this).WS || new WordSmith();
     return P(this).WS;
-  }
-  get socket(){
-    return {on: () => {}};
-    return P(this).socket  = P(this).socket || new WebSocket.Server({port: 1024, path: this.id})  
   }
   get newWord(){
     return this.WS.word;
@@ -90,7 +83,7 @@ class Room{
   addPlayer(player){
     if(!player instanceof Player) return false;
     P(this).players.set(player.id, player);
-    player.send({room: this})
+    player.currentRoom = this;
   }
   removePlayer(player){
     let players = P(this).players;

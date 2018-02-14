@@ -35,6 +35,30 @@ app.engine('html', es6Renderer);
 app.set('view engine', 'html');
 app.set('views', paths.views);
 
+app.use((req,res,next) => {
+  if(path.extname(req.path)){
+    return fs.exists(appPath + req.path, (e) => {
+      if(!e){
+        res.status(404).end("Not Found");
+      }else{
+        res.writeHead(200, {'Content-Type': 'text/' + path.extname(req.path).slice(1)});
+        if(PROD && !/jquery/.test(path.basename(req.path)) && (path.extname(req.path) == '.js')){
+          let {dir, name, ext} = path.parse(req.path);
+          let newPath = appPath + dir + '/' + name + '.min' + ext;
+          console.log(newPath);
+          press.minify({compressor: 'babel-minify', input: appPath + req.path, output: newPath, callback: (err, min) => res.end(min)})
+        }else{
+          fs.createReadStream(appPath + req.path).pipe(res);
+        }
+      }
+    });
+  }else if (req.path == '/'){
+    renderDefault(req,res,next);
+  }else{
+    next();
+  }
+  
+})
 // app.route('/api')
 //   .all((req, res) => {
 //     res.end('Just the server here...');
@@ -65,7 +89,6 @@ passport.deserializeUser((id, done) => {
 });
 
 app.param('endpoint', (req,res,next,endpoint) => (req.endpoint = endpoint) && next());
-
 app.get('/login/:endpoint', (req, res, next) => {
   request({
     headers: {'User-Agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'},
@@ -116,43 +139,28 @@ app.get('/api/rooms', (req,res,next) => {
 });
 app.param('rid', (req,res,next,rid)=>(req.rid=rid) && next());
 app.get('/socket/room/:rid', (req,res,next)=>{
-  Coordinator.addToRoom(req.player, req.rid)
+  if(req.rid && (req.rid != 'undefined')){
+    Coordinator.addToRoom(req.player, req.rid)
+  }
   next();
 })
 app.get('/socket/rooms', (req,res,next)=>{
   req.player.send({rooms: Coordinator.addToLobby(req.player)});
   next();
 })
-app.use((req,res,next) => {
-  if(path.extname(req.path)){
-    //req.session.views = req.session.views ? (req.session.views + 1) : 1;
-    //console.log("regular session:", req.session);
-    return fs.exists(appPath + req.path, (e) => {
-      if(!e){
-        res.status(404).end("Not Found");
-      }else{
-        res.writeHead(200, {'Content-Type': 'text/' + path.extname(req.path).slice(1)});
-        if(PROD && !/jquery/.test(path.basename(req.path)) && (path.extname(req.path) == '.js')){
-          let {dir, name, ext} = path.parse(req.path);
-          let newPath = appPath + dir + '/' + name + '.min' + ext;
-          console.log(newPath);
-          press.minify({compressor: 'babel-minify', input: appPath + req.path, output: newPath, callback: (err, min) => res.end(min)})
-        }else{
-          fs.createReadStream(appPath + req.path).pipe(res);
-        }
-      }
-    });
-  }
-  app.render('index', (e, html) => res.status(200).end(html));
-})
+
+//When all else fails ... throw up that index page...
+app.use(renderDefault);
+function renderDefault(req,res,next){
+  app.render('index', (e, html) => res.status(200).end(html))
+}
 global.server = app.listen(port, () => console.log("I'm listening"));
 const ws = new WebSocket.Server({server: global.server});
 global.playerSocketMap = new Map();
 ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
-  Player.parse(req.session);
+  Player.parse(req.session, wsConn);
   let player = req.session.player;
-  console.log("Player ID:", player.id);
-  global.playerSocketMap.set(player.id, wsConn);
+
 
   let url = new URL(req.headers.origin + req.url);
   let params = Array.from(url.searchParams.entries()).reduce((obj,p) => Object.assign(obj, {[p[0]]:p[1]}), {})
@@ -162,17 +170,17 @@ ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
   //console.warn("socket session:", req.session);
   
   wsConn.guid = guid();
-  wsConn.on('message', function(player, message){
-    console.log("Message from:",player,"|Message:",message);
-    if(/^[\[|\{]/.test(message)) message = JSON.parse(message);
-    else return console.log("Malformed message received.");
-    let mid = message.mid;
-    let guid = message.guid;
-    //Promise.all(Object.keys(message).filter(k => (typeof ws[k] == 'function')).map(k => ws[k].call(this, message[k], guid)))
-    //  .then(results => wsConn.send(JSON.stringify({mid, results})));
+//   wsConn.on('message', function(player, message){
+//     console.log("Message from:",player,"|Message:",message);
+//     if(/^[\[|\{]/.test(message)) message = JSON.parse(message);
+//     else return console.log("Malformed message received.");
+//     let mid = message.mid;
+//     let guid = message.guid;
+//     //Promise.all(Object.keys(message).filter(k => (typeof ws[k] == 'function')).map(k => ws[k].call(this, message[k], guid)))
+//     //  .then(results => wsConn.send(JSON.stringify({mid, results})));
     
-    //wsConn.send('I got your message bro [' + message + ']');
-  }.bind(wsConn, req.session.player));
+//     //wsConn.send('I got your message bro [' + message + ']');
+//   }.bind(wsConn, req.session.player));
   wsConn.on('error', () => console.log('Connection disconnected/error'));
   wsConn.on('close', () => console.log('Connection closed'));
   //wsConn.send(JSON.stringify({guid: wsConn.guid}));

@@ -1,4 +1,4 @@
-const {PRIVATE:P,Coordinator, guid} = require('../utils');
+const {PRIVATE:P,Coordinator, guid, safeObject} = require('../utils');
 const {Room} = require('../rooms');
 class Player{
   constructor(config){
@@ -20,8 +20,14 @@ class Player{
       wpm: 0,
       atg: 0,
       lastRoom: undefined
-
     }
+    Object.defineProperty(this, 'currentRoom', {configurable: true, writeable: true, enumerable: true,
+      get: () => P(this).currentRoom,
+      set: room => {
+        this.send({room});
+        return P(this).currentRoom = room;
+      }
+    });
     Object.assign(this, defaultConfig, config || {});
     return this;
   }
@@ -35,22 +41,41 @@ class Player{
     return P(this).email = v;
   }
   get socket(){
-    return P(this).socket || global.playerSocketMap.get(this.id) || {send: ()=>{}};
+    return P(this).socket || global.playerSocketMap.get(this.id) || {on: () => {}, send: ()=>{}};
   }
+
   set socket(socket){
     let oldSocket = P(this).socket || global.playerSocketMap.get(this.id);
     oldSocket && oldSocket.terminate();
-    P(this).socket = socket;
+    global.playerSocketMap.set(this.id, P(this).socket = socket);
+    socket.on('message', message => {
+      if(/^[\[|\{]/.test(message) && (message = JSON.parse(message))){
+        let mid = message.mid;
+        let keys = Object.keys(message);
+        Promise.all(keys
+          .map(k => (typeof this[k] == 'function') && Promise.resolve(this[k].call(this, message[k])))
+        ).then(results => {
+          results.forEach((result,i) => {
+            message[keys[i]] = result;
+          })
+          socket.send(JSON.stringify(Object.assign(message, {mid})));
+        });
+
+      }
+    });
+    
   }
   send(data){
-    console.log('Sent:',data);
-    this.socket.send(JSON.stringify(data));
+    data = JSON.stringify(safeObject(data));
+    this.socket.send(data);
+    return 'Sent: ' + data;
   }
-  static parse(session){
+  static parse(session, ws){
     session.player = session.player || new Player();
     if(!(session.player instanceof Player)){
       session.player = new Player(session.player);
     }
+    if(ws) session.player.socket = ws;
     return session;
   }
 }

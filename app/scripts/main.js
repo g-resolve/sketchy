@@ -1,5 +1,5 @@
 
-var app = (() => {
+var game = (() => {
   let players = [], 
       myGUID = guid(), 
       pencil = false, 
@@ -27,8 +27,7 @@ var app = (() => {
   });
   self.bootstrap = function(initParams){
     //listRooms();
-    templateFill(initParams);
-    templateActions();
+
     /*
     wrapper = document.querySelector('#wrapper');
     canvasWrapper = document.querySelector('#canvas');
@@ -69,20 +68,7 @@ var app = (() => {
       $("#rooms").append(rooms);
     }, error => {console.error(error)})
   }
-  function templateFill(params){
-      let username, birthday = "";
-      try{username = params.user._json.name.familyName;}
-      catch(e){ username = params.displayName}
-      let greeting = username && "Welcome back" || "Welcome to WeScribble!";
-      let parsed = {username, greeting}; 
-      $('ws-slot').toArray().forEach(s => {
-        let children = Array.from(s.attributes).map(a => (parsed[a.name] && {key: a.name, value:parsed[a.name]})).filter(v=>v).map(c => $(`<span class="${c.key}">${c.value}</span>`))
-        children.length && $(s).empty().append(children);
-      });
-  }
-  function templateActions(){
-    $('[logout]').on('click', () => window.location.href='/api/logout');
-  }
+
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;
     let messageHeight = $("#messages").height();
@@ -174,7 +160,7 @@ var app = (() => {
     }
   }
   function injectPlayers(){
-    return app.randos().then(({results:ps}) => {
+    return game.randos().then(({results:ps}) => {
       let playersContainer = document.getElementById('players');
       return ps.map(p => {
         let playerElement = $(`<player>`);
@@ -186,10 +172,10 @@ var app = (() => {
   }
   function artificialActivities(){
     let baseFrequency = 1;
-    let chosenPlayer = app.players[Math.floor(Math.random() * app.players.length)];
+    let chosenPlayer = game.players[Math.floor(Math.random() * game.players.length)];
     chosenPlayer.says(getRandomMessage());
-    clearInterval(app.artificialInterval);
-    app.artificialInterval = setInterval(() => {
+    clearInterval(game.artificialInterval);
+    game.artificialInterval = setInterval(() => {
       setTimeout(artificialActivities, Math.random() * 3000);
     }, 3000)
     
@@ -209,4 +195,4 @@ var app = (() => {
   }
   return self;
 })();
-R.init().then(app.bootstrap, e => {console.warn("Unable to init app", e)});
+R.init().then(game.bootstrap, e => {console.warn("Unable to init app", e)});

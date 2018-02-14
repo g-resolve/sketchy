@@ -3,9 +3,24 @@ self.content = $("#content");
 self.overlay = $("#overlay");
 self.Q = document.querySelector.bind(document);
 self.Qa = document.querySelectorAll.bind(document);
-function guid() {
+function guid(size) {
     let u = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-    return u() + u() + '-' + u() + '-' + u() + '-' + u() + '-' + u() + u() + u();
+    if(size){
+        return u() + '-' + u();
+    }else{
+        return u() + u() + '-' + u() + '-' + u() + '-' + u() + '-' + u() + u() + u();    
+    }
+    
+}
+function safeObject(data){
+    if(!data){
+        data = {};
+    }else if(typeof data == 'string'){
+        data = {[data]: data}
+    }else if(Array.isArray(data) || (typeof data == 'boolean') || (typeof data == 'function')){
+        data = {data: data};
+    }
+    return data;
 }
 function getAsync(){
     let p = {};
@@ -17,6 +32,8 @@ function getAsync(){
     return p; 
 }
 $.fn.cleanup = function(){
-    this.children().toArray().forEach(c => $(`link[for='${c.name}']`).add(c).remove())
+    this.children()
+        .toArray()
+        .forEach(c => $(`link[for='${c.name}']`).add(c).remove())
     return this;
 }

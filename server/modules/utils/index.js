@@ -15,4 +15,14 @@ function guid() {
     let u = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     return u() + u() + '-' + u() + '-' + u() + '-' + u() + '-' + u() + u() + u();
 }
-module.exports = {PRIVATE: new PRIVATE(), serialize, guid};
+function safeObject(data){
+    if(!data){
+        data = {};
+    }else if(typeof data == 'string'){
+        data = {[data]: data}
+    }else if(Array.isArray(data) || (typeof data == 'boolean') || (typeof data == 'function')){
+        data = {data: data};
+    }
+    return data;
+}
+module.exports = {PRIVATE: new PRIVATE(), serialize, guid, safeObject};

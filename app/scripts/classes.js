@@ -101,6 +101,7 @@ class Socket{
 //     });
   }
   go(path){
+    this.cleanup();
     let promise = getAsync();
     if(!path){ return false }
     if(!/^\//.test(path)){ path = '/' + path }
@@ -122,6 +123,9 @@ class Socket{
   onclose(e){
     console.info('Closed:', e.currentTarget.url);
   }
+  cleanup(){
+    P(this).subscriptions = {};
+  }
   subscribe(el, method, callback){
     if(!el || !callback) return false;
     let subs = P(this).subscriptions = P(this).subscriptions || {};
@@ -133,6 +137,7 @@ class Socket{
     message = JSON.parse(message);
     let pending;
     if(message.mid && (pending = this.pending[message.mid])){
+      delete message.mid;
       pending.done(message);
     }else{
       Object.keys(message).forEach(k => {
@@ -146,6 +151,7 @@ class Socket{
         }
         let customEvent = new CustomEvent(k.toLowerCase(), {detail: eventData});
         window.dispatchEvent(customEvent);
+        console.log(`Dispatched event [${k}] with data`, eventData);
         
       })
     }
@@ -157,18 +163,14 @@ class Socket{
     this.guid = guid;
   }
   send(message){
-    if(!P(this).ws.readyState) return Promise.resolve(false);
+    if(!P(this).ws.readyState || !message) return Promise.resolve(false);
+    
+    let mid = guid('small'), ws = P(this).ws;
     let confirm = getAsync();
-    let mid = Math.round(Math.random()*Math.pow(20,6)), ws = P(this).ws;
     this.pending[mid] = confirm;
-    if(message && (Array.isArray(message) || message.hasOwnProperty || (typeof message == 'string' && !/^[\[|\{]/.test(message)))){
-      message.mid = mid;
-      message.guid = this.guid;
-      message = JSON.stringify(message);
-      ws.readyState && ws.send(message);  
-    }else{
-      console.warn('Invalid data');
-    }
+    message = Object.assign({}, safeObject(message), {mid});
+    //message.guid = this.guid;
+    ws.readyState && ws.send(JSON.stringify(message));  
     return confirm.await;
     //console.log(api.readyState);
     
@@ -184,6 +186,7 @@ class ROUTER{
         this.params = Array.from(this.url.searchParams && this.url.searchParams.entries() || []).reduce((obj, e) => {obj[e[0]] = e[1]; return obj},{});
         this.params.subURL = this.sub;
         this.params.baseURL = this.base;
+        this.params.path = this.path;
         this.addRoutes({
           '/': {
             view: 'main',
@@ -203,7 +206,7 @@ class ROUTER{
               $('buttons button').on('click', e => {
                 $("#login h3").html('Got it!');
                 $('buttons').html(`<p>We\'ll log you in using ${e.target.innerHTML}... one moment.</p>`)
-                setTimeout(() => window.location.href = "/api/" + e.target.id, 2000);
+                setTimeout(() => window.location.href = "/api/" + e.target.id, 500);
                //$(`<iframe src="/api/${e.target.id}"></iframe>`).appendTo('#login');
                 e.preventDefault();
               })
@@ -225,6 +228,10 @@ class ROUTER{
             },
             view: 'account'
           }
+        });
+        window.addEventListener('popstate', e => {
+          delete e.state.user;
+          this.solveEntryPoint(Object.assign(this.params, e.state));
         })
     }
     addRoutes(obj){
@@ -235,32 +242,36 @@ class ROUTER{
     }
     init(){
         return $.get('/api/user').promise().then(data => {
-            if(!data.emails && !data.email){
-                return Promise.reject(this.rejectAuth());
-            }
-            document.body.setAttribute('authorized','');
             this.params.user = data;
-            this.solveEntryPoint();
-            return this.params.user;
-        }, this.rejectAuth.bind(this));
+            return this.solveEntryPoint(this.params);
+        }, () => {debugger});
     }
     rejectAuth(){
-        return this.show('/');
-        //return this.show('/').then(() => this.show('login', {overlay: true}));
+        //return this.show('/');
+        return this.show('/').then(() => this.show('login', {overlay: true}));
     }
     addRoute(path, obj){
         this.routes[path] = obj;
         this.go();
     }
     solveEntryPoint(){
-        let overlay = this.params.o;
-        let path = this.path;
-        overlay = this.show.bind(this, overlay, {overlay});
-        path = this.show.bind(this, path);
-        path().then(overlay);
+        if(!this.params.user.emails && !this.params.user.email){
+          this.params.o = '/login';
+        }else{
+          document.body.setAttribute('authorized','');
+        }
+        $("#overlay,#content").cleanup();
+        let overlay = this.show.bind(this, this.params.o, {overlay: this.params.o});
+        let path = this.show.bind(this, this.path);
+        let templateFill = this.templateFill.bind(this);
+        let templateActions = this.templateActions.bind(this);
+        return path()
+          .then(overlay)
+          .then(templateFill)
+          .then(templateActions);
     }
     show(path, options={}){
-        if(!path) return Promise.reject(false);
+        if(!path) return Promise.resolve(false);
         if(options && options.target) options = {};
         let reqPath = path;
         path = this.findPath(path);
@@ -277,9 +288,28 @@ class ROUTER{
               window.history.pushState(Object.assign({}, this.params, options), path.title, reqPath);   
               this.currentPath = reqPath;
             }
-            return init.then(r => argsToPass);
+            return init;
         });
 
+    }
+    templateFill(){
+      let user = this.params.user;
+      let username, birthday = "";
+      try{username = user.user._json.name.familyName;}
+      catch(e){ username = user.displayName}
+      let greeting = username && "Welcome back" || "Welcome to WeScribble!";
+      let parsed = {username, greeting}; 
+      $('ws-slot').toArray().forEach(s => {
+        let children = Array.from(s.attributes)
+          .map(a => (parsed[a.name] && {key: a.name, value:parsed[a.name]}))
+          .filter(v=>v)
+          .map(c => $(`<span class="${c.key}">${c.value}</span>`))
+        children.length && $(s).empty().append(children);
+      });
+      return true;
+    }
+    templateActions(){
+      $('[logout]').on('click', () => window.location.href='/api/logout');
     }
     go(_path_){
         let path = _path_ || this.path;
@@ -301,7 +331,8 @@ class ROUTER{
               vars = {[p.slice(1)]: needleParts[i]};
               p = '.*';
             }
-            let matched = needleParts.some(np => p && new RegExp(p, 'i').test(np))
+            let matched = needleParts[i] && new RegExp(p, 'i').test(needleParts[i]);
+            //let matched = needleParts.some(np => p && new RegExp(p, 'i').test(np))
             return {vars, matched};
           }).filter(v=>v.matched);
         let varsObj = hits.map(hit => hit.vars).filter(v=>v).reduce((obj,a) => Object.assign(obj, a), {});
