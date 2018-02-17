@@ -2,6 +2,7 @@
   /* flex-grow: 0; */
   /* position: relative; */
   background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
+  height: 100%;
 }
 @keyframes popin{
   0%{

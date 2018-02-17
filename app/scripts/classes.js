@@ -54,11 +54,17 @@ class Player{
     this.element.on('mouseover', () => $(pencil).hide('fast'));
     return this;
   }
+  get element(){
+    return P(this).element;
+  }
+  set element(v){
+    return P(this).element = v;
+  }
   get name(){
-    return getOrMake('name').html();
+    return this.getOrMake('name').html();
   }
   set name(v){
-    return getOrMake('name').html(v);
+    return this.getOrMake('name').html(v);
   }
   getOrMake(tag){
     let element = this.element.children(tag);
@@ -106,10 +112,11 @@ class Socket{
     if(!path){ return false }
     if(!/^\//.test(path)){ path = '/' + path }
     let oldSocket = P(this).ws;
-    if(oldSocket){ oldSocket.close() }
+    if(oldSocket){ oldSocket.close(1000) }
     let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + path);
     ws.addEventListener('open',(e) => {
       promise.then(e);
+      this.startKeepAlive();
       this.onopen(e);
     });
     ws.addEventListener('close',this.onclose.bind(this));
@@ -124,12 +131,29 @@ class Socket{
     console.info('Closed:', e.currentTarget.url);
   }
   cleanup(){
-    P(this).subscriptions = {};
+    this.stopKeepAlive();
+    let subscriptions = P(this).subscriptions || {};
+    Object.keys(subscriptions).forEach(method => {
+      let subscribers = subscriptions[method];
+      subscribers.forEach(sub => {
+        sub.el.removeEventListener(method, sub.callback);
+      })
+    })
+    return P(this).subscriptions = {};
+
+  }
+  startKeepAlive(){
+    console.log("ping");
+    this.send({ping:true});
+    return P(this).keepAliveInterval = setInterval(() => this.send({ping:true}), 5000);
+  }
+  stopKeepAlive(){
+    return clearInterval(P(this).keepAliveInterval);
   }
   subscribe(el, method, callback){
     if(!el || !callback) return false;
     let subs = P(this).subscriptions = P(this).subscriptions || {};
-    subs[method] = [].concat.apply(subs[method]||[], [el]);
+    subs[method] = [].concat.apply(subs[method]||[], [{el,callback}]);
     el.addEventListener(method, callback);
   }
   onmessage({data:message}){
@@ -144,14 +168,14 @@ class Socket{
         let eventData = message[k];
         let subscribers, subs = P(this).subscriptions;
         if(subscribers = subs[k]){
-          subscribers.forEach(sub => sub.dispatchEvent(new CustomEvent(k, {detail: eventData})))
+          subscribers.forEach(sub => sub.el.dispatchEvent(new CustomEvent(k, {detail: eventData})))
         }
         if(typeof this['on'+k.toLowerCase()] == 'function'){
           this['on' + k.toLowerCase()](eventData);
         }
         let customEvent = new CustomEvent(k.toLowerCase(), {detail: eventData});
         window.dispatchEvent(customEvent);
-        console.log(`Dispatched event [${k}] with data`, eventData);
+        //console.log(`Dispatched event [${k}] with data`, eventData);
         
       })
     }
@@ -192,22 +216,32 @@ class ROUTER{
             view: 'main',
             init(params){
               //Subscribe to rooms in the lobby.
-              S.go('rooms').then(() => S.subscribe(Q('#rooms'), 'rooms', ({target:el,detail:rooms}) => {
-                rooms = rooms.map(room => 
-                  $(`<room>`).append(() => Object.keys(room).map(k => 
-                    $(`<${k} value="${room[k]}">`).html(room[k])))
-                  .on('click',R.show.bind(R, '/room/' + room.id)));
-                $("#rooms").append(rooms); 
-              }));
+              S.go('rooms').then(() => {
+                S.subscribe(Q('#rooms'), 'rooms', ({target:el,detail:rooms}) => {
+                  rooms = rooms.map(room => 
+                    $(`<room>`).append(() => Object.keys(room).map(k => 
+                      $(`<${k} value="${room[k]}">`).html(room[k])))
+                    .on('click',R.show.bind(R, '/room/' + room.id)));
+                  $("#rooms").append(rooms); 
+                })
+              })
             }
           },
           '/login': {
             init(){
+              let dismiss = e => {
+                $("#overlay").cleanup();
+                window.removeEventListener('keydown', dismiss);
+              };
+              window.addEventListener('keydown', dismiss)
               $('buttons button').on('click', e => {
                 $("#login h3").html('Got it!');
+                if(e.target.id == 'llogin'){
+                  $("#overlay").cleanup();
+                  return e.preventDefault();
+                }
                 $('buttons').html(`<p>We\'ll log you in using ${e.target.innerHTML}... one moment.</p>`)
                 setTimeout(() => window.location.href = "/api/" + e.target.id, 500);
-               //$(`<iframe src="/api/${e.target.id}"></iframe>`).appendTo('#login');
                 e.preventDefault();
               })
             },
@@ -215,9 +249,9 @@ class ROUTER{
           },
           '/room/:rid': {
             init(args){
-              console.log("ROOM/WOW", arguments);
               S.go('room/' + args.vars.rid).then(S.subscribe.bind(S, $('<div>')[0], 'room', ({detail:room}) => {
-                  console.info("ROOM JOINED:",room);
+                console.info("ROOM JOINED:",room);
+
               }));
             },
             view: 'room'
@@ -243,6 +277,7 @@ class ROUTER{
     init(){
         return $.get('/api/user').promise().then(data => {
             this.params.user = data;
+            Object.assign(ME, data);
             return this.solveEntryPoint(this.params);
         }, () => {debugger});
     }
@@ -254,21 +289,22 @@ class ROUTER{
         this.routes[path] = obj;
         this.go();
     }
-    solveEntryPoint(){
+    solveEntryPoint(params = {}){
         if(!this.params.user.emails && !this.params.user.email){
-          this.params.o = '/login';
+          this.params.o = params.o || '/login';
         }else{
           document.body.setAttribute('authorized','');
         }
         $("#overlay,#content").cleanup();
         let overlay = this.show.bind(this, this.params.o, {overlay: this.params.o});
-        let path = this.show.bind(this, this.path);
+        let path = this.show.bind(this, this.params.path || this.path);
         let templateFill = this.templateFill.bind(this);
         let templateActions = this.templateActions.bind(this);
         return path()
           .then(overlay)
           .then(templateFill)
-          .then(templateActions);
+          .then(templateActions)
+          .then(() => params);
     }
     show(path, options={}){
         if(!path) return Promise.resolve(false);
@@ -309,14 +345,15 @@ class ROUTER{
       return true;
     }
     templateActions(){
+      window.addEventListener('onbeforeunload',e => {
+        
+      })
+      $('h1').on('click', R.go.bind(R, '/'));
       $('[logout]').on('click', () => window.location.href='/api/logout');
     }
-    go(_path_){
-        let path = _path_ || this.path;
-        let len = path.length;
-        if(!len || len <= 1) path = '/';
-        else if(!this.routes[path]) path = this.findPath(path)
-        this.traverse(path);
+    go(path,o){
+      Object.assign(this.params, {path,o})
+      this.solveEntryPoint()
     }
     findPath(needle){
       if(!needle || (needle === '/')) return this.routes['/'];
@@ -346,9 +383,7 @@ class ROUTER{
         return $('.wrapper,link[for]').remove();
     }
     getTemplate(name){
-        let template = $(`.wrapper.${name}`);
-        template = template.length && Promise.resolve(template);
-        return template ? template : $.ajax({url:`/views/${name}.html`, xhrFields: {withCredentials: true}, type: 'GET'}).promise().then(t => {
+        return $.ajax({url:`/views/${name}.html`, xhrFields: {withCredentials: true}, type: 'GET'}).promise().then(t => {
             let ss = [$(`link[for=${name}]`),$(`<link rel="stylesheet" href="/css/${name}.css" for="${name}">`)].find(ss => ss.length)
             return new Promise(res => ss.appendTo(document.head).on('load', res.bind(null, $(`<section class="wrapper ${name}">`).prop('name',name).html(t))));
         });
@@ -365,3 +400,4 @@ const R = new ROUTER();
 const P = new PRIVATE();
 const M = new Messenger();
 const S = new Socket();
+const ME = new Player();

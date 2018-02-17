@@ -26,8 +26,8 @@ ws-logout{
 .wrapper{
   /* position: relative; */
   display: block;
-  height: 100%;
-  overflow: hidden;
+  height: max-content;
+  overflow: visible;
   background: linear-gradient(#fff, #ccc);
   min-width: 100vw;
   padding: 0px 20px;
@@ -81,12 +81,14 @@ h1 #fps{
 }
 #content{
   padding: 0px;
-  min-height: 100%;
+  /* min-height: 100%; */
   display: flex;
   border-top: 1px solid #000;
   flex-direction: row;
   margin-left: 0;
   transition: margin-left 1s 0s cubic-bezier(0.12, 1.63, 0.18, 0.81);
+  overflow: auto;
+  height: calc(100% - 42px);
 }
 #content.p1{margin-left: -100vw;}
 #content.p2{margin-left: -200vw;}

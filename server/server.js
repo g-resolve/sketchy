@@ -1,7 +1,6 @@
 const {guid} = require('./modules/utils');
-const {Room} = require('./modules/rooms');
-const {Coordinator} = require('./modules/coordinator');
-const {Player} = require('./modules/player');
+const loki = require('lokijs');
+const DB = new loki('app.json', {autosave: true});
 const press = require('node-minify');
 const WebSocket = require('ws');
 const {URL} = require('url');
@@ -26,11 +25,11 @@ const appPath = process.cwd() + '/../app';
 const paths = {css: appPath + '/css', views: appPath + '/views', scripts: appPath + '/scripts'}
 var ENV = 'dev';
 let [DEV,PROD] = [ENV=='dev', ENV=='prod'];
-global.Room = Room;
-global.Player = Player;
-global.press = press;
-global.Coordinator = Coordinator;
 
+global.DB = DB;
+global.press = press;
+global.playerSocketMap = new Map();
+global.socketPlayerMap = new WeakMap();
 app.engine('html', es6Renderer);
 app.set('view engine', 'html');
 app.set('views', paths.views);
@@ -99,14 +98,15 @@ app.use(sessionParser);
 //app.use(bodyParser.urlencoded({ extended: false }));
 app.use(passport.initialize());
 app.use(passport.session());
-app.use((req,res,next) => {
+
+function injectPlayer(req){
   req.session = req.session || {};
   req.session.player = req.session.player || new Player();
   if(!(req.session.player instanceof Player)){
     req.session.player = new Player(req.session.player);
   }
-  next();
-})
+  return req.session.player;
+}
 app.all('/api/flogin', passport.authenticate('facebook-auth', {display: 'popup', scope: ['email']}));
 app.all('/api/glogin', passport.authenticate('google-auth', {scope: ['email']}));
 app.all('/api/tlogin', passport.authenticate('twitter-auth', {scope: ['email']}));
@@ -126,13 +126,15 @@ app.all('/api/logout', (req, res, next) => {
 });
 app.all('/api/:endpoint/callback', (req,res,next)=>{
   passport.authenticate(req.endpoint + '-auth', (error, user) => {
-    if(!error) Object.assign(req.session.player, user);
+    if(!error){
+      req.session.player = user;
+      injectPlayer(req);
+    }
     res.redirect('/');
   })(req,res,next);
 })
 app.get('/api/user', (req,res,next) => {
-  if(req.session.player) return res.json(req.session.player);
-  return res.status(401).end('Unauthorized');
+  return res.json(injectPlayer(req));
 });
 app.get('/api/rooms', (req,res,next) => {
   return res.json(Coordinator.getRooms());
@@ -140,7 +142,12 @@ app.get('/api/rooms', (req,res,next) => {
 app.param('rid', (req,res,next,rid)=>(req.rid=rid) && next());
 app.get('/socket/room/:rid', (req,res,next)=>{
   if(req.rid && (req.rid != 'undefined')){
-    Coordinator.addToRoom(req.player, req.rid)
+    try{
+    Coordinator.addToRoom(req.player, req.rid)  
+    }catch(e){
+      debugger;
+    }
+    
   }
   next();
 })
@@ -154,52 +161,63 @@ app.use(renderDefault);
 function renderDefault(req,res,next){
   app.render('index', (e, html) => res.status(200).end(html))
 }
-global.server = app.listen(port, () => console.log("I'm listening"));
-const ws = new WebSocket.Server({server: global.server});
-global.playerSocketMap = new Map();
-ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
-  Player.parse(req.session, wsConn);
-  let player = req.session.player;
 
-
-  let url = new URL(req.headers.origin + req.url);
-  let params = Array.from(url.searchParams.entries()).reduce((obj,p) => Object.assign(obj, {[p[0]]:p[1]}), {})
-  if(url.pathname.slice(1).length){
-    app.runMiddleware('/socket' + url.pathname, Object.assign(params, {player}), () => {});
-  }
-  //console.warn("socket session:", req.session);
+//LOAD IT UP!
+DB.loadDatabase({}, e => {
+  const {Room} = require('./modules/rooms');
+  const {Coordinator} = require('./modules/coordinator');
+  const {Player} = require('./modules/player');
+  global.Room = Room;
+  global.Player = Player;
+  global.Coordinator = Coordinator;
   
-  wsConn.guid = guid();
-//   wsConn.on('message', function(player, message){
-//     console.log("Message from:",player,"|Message:",message);
-//     if(/^[\[|\{]/.test(message)) message = JSON.parse(message);
-//     else return console.log("Malformed message received.");
-//     let mid = message.mid;
-//     let guid = message.guid;
-//     //Promise.all(Object.keys(message).filter(k => (typeof ws[k] == 'function')).map(k => ws[k].call(this, message[k], guid)))
-//     //  .then(results => wsConn.send(JSON.stringify({mid, results})));
-    
-//     //wsConn.send('I got your message bro [' + message + ']');
-//   }.bind(wsConn, req.session.player));
-  wsConn.on('error', () => console.log('Connection disconnected/error'));
-  wsConn.on('close', () => console.log('Connection closed'));
-  //wsConn.send(JSON.stringify({guid: wsConn.guid}));
-  global.connections = global.connections || [];
-  global.connections.push(wsConn);
-}));
-ws.on('error', () => console.log('Socket disconnected/error'));
-ws.joinRoom = (messge, guid) => new Promise(resolve => {
-  //Coordinator.rooms
-})
-//Live Paint
-ws.livePaint = (message, guid) => new Promise(resolve => {
- for(let client of ws.clients){
-   if(client.guid !== guid){
-     message.guid = guid;
-     client.send(JSON.stringify({livePaint: message}));
-   }else{
-    
+  global.server = app.listen(port, () => console.log("I'm listening"));
+
+
+  const ws = new WebSocket.Server({server: global.server});
+  global.ws = ws;
+  ws.on('connection', (wsConn, req) => sessionParser(req, {}, () => {
+    let player = req.session.player =  Player.parse(req.session, wsConn);
+    let url = new URL(req.headers.origin + req.url);
+    let params = Array.from(url.searchParams.entries()).reduce((obj,p) => Object.assign(obj, {[p[0]]:p[1]}), {})
+    if(url.pathname.slice(1).length){
+      app.runMiddleware('/socket' + url.pathname, Object.assign(params, {player}), () => {});
+    }
+    //console.warn("socket session:", req.session);
+
+    wsConn.guid = guid();
+  //   wsConn.on('message', function(player, message){
+  //     console.log("Message from:",player,"|Message:",message);
+  //     if(/^[\[|\{]/.test(message)) message = JSON.parse(message);
+  //     else return console.log("Malformed message received.");
+  //     let mid = message.mid;
+  //     let guid = message.guid;
+  //     //Promise.all(Object.keys(message).filter(k => (typeof ws[k] == 'function')).map(k => ws[k].call(this, message[k], guid)))
+  //     //  .then(results => wsConn.send(JSON.stringify({mid, results})));
+
+  //     //wsConn.send('I got your message bro [' + message + ']');
+  //   }.bind(wsConn, req.session.player));
+    wsConn.onerror = () => console.log('Error');
+    wsConn.on('error', () => console.log('Connection disconnected/error'));
+    wsConn.on('close', () => console.log('Connection closed'));
+    //wsConn.send(JSON.stringify({guid: wsConn.guid}));
+  }));
+  ws.onerror = () => console.log('onerror', 'Socket disconnect/error');
+  ws.on('error', () => console.log('Socket disconnected/error'));
+  ws.joinRoom = (messge, guid) => new Promise(resolve => {
+    //Coordinator.rooms
+  })
+  //Live Paint
+  ws.livePaint = (message, guid) => new Promise(resolve => {
+   for(let client of ws.clients){
+     if(client.guid !== guid){
+       message.guid = guid;
+       client.send(JSON.stringify({livePaint: message}));
+     }else{
+
+     }
    }
- }
- resolve('Live paint sent');
+   resolve('Live paint sent');
+  });
+  
 });

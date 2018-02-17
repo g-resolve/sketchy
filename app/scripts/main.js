@@ -26,6 +26,7 @@ var game = (() => {
     drawing: {get: () => drawing}
   });
   self.bootstrap = function(initParams){
+    
     //listRooms();
 
     /*

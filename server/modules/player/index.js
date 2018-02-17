@@ -1,5 +1,6 @@
 const {PRIVATE:P,Coordinator, guid, safeObject} = require('../utils');
 const {Room} = require('../rooms');
+const playerDB = global.DB.addCollection('players', {indices: ['email','id']});
 class Player{
   constructor(config){
     let defaultConfig = {
@@ -21,14 +22,33 @@ class Player{
       atg: 0,
       lastRoom: undefined
     }
-    Object.defineProperty(this, 'currentRoom', {configurable: true, writeable: true, enumerable: true,
+    Object.defineProperty(this, 'currentRoom', {configurable: true, writeable: true, enumerable: false,
       get: () => P(this).currentRoom,
       set: room => {
         this.send({room});
         return P(this).currentRoom = room;
       }
     });
-    Object.assign(this, defaultConfig, config || {});
+    config = config || {};
+    delete config.$loki;
+    delete config.meta;
+    config.email = config.email || config.emails && config.emails[0].value;
+    config = (() => {
+      let player;
+      if(config.email){
+        player = playerDB.findOne({$or: [
+          {id: config.id},
+          {email: config.email}
+        ]});
+        if(!player){
+          player = playerDB.insert(config);
+        }
+        return player;
+      }
+      return config;
+    })();
+
+    Object.assign(this, defaultConfig, config);
     return this;
   }
   joinRoom(rid){
@@ -43,7 +63,6 @@ class Player{
   get socket(){
     return P(this).socket || global.playerSocketMap.get(this.id) || {on: () => {}, send: ()=>{}};
   }
-
   set socket(socket){
     let oldSocket = P(this).socket || global.playerSocketMap.get(this.id);
     oldSocket && oldSocket.terminate();
@@ -62,21 +81,39 @@ class Player{
         });
 
       }
-    });
-    
+    }); 
+  }
+  message(){
+    return this.messageRoom.apply(this, [...arguments])
+  }
+  messageRoom(content){
+    return "WOW";
+    //return this.currentRoom.message({content, from: this});
+  }
+  ping(){
+    console.log(this.name, 'pong');
+    return this.currentRoom && this.currentRoom.resetKickTimer(this);
   }
   send(data){
     data = JSON.stringify(safeObject(data));
-    this.socket.send(data);
-    return 'Sent: ' + data;
+    if(this.socket.readyState == 1){
+      this.socket.send(data);  
+      return 'Sent: ' + data;
+    }
+    return 'Socket not avaialble for ' + this.name;
+    
+    
   }
   static parse(session, ws){
     session.player = session.player || new Player();
     if(!(session.player instanceof Player)){
       session.player = new Player(session.player);
     }
-    if(ws) session.player.socket = ws;
-    return session;
+    if(ws){
+      session.player.socket = ws;
+      ws.player = session.player;
+    }
+    return session.player;
   }
 }
 module.exports = {Player};
