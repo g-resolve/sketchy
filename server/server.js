@@ -143,11 +143,10 @@ app.param('rid', (req,res,next,rid)=>(req.rid=rid) && next());
 app.get('/socket/room/:rid', (req,res,next)=>{
   if(req.rid && (req.rid != 'undefined')){
     try{
-    Coordinator.addToRoom(req.player, req.rid)  
+      Coordinator.addToRoom(req.player, req.rid)  
     }catch(e){
       debugger;
     }
-    
   }
   next();
 })

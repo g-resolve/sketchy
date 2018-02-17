@@ -7,7 +7,7 @@ var game = (() => {
       ctx = false, 
       drawing = false, 
       trace = [], 
-      self = {},
+      myself = {},
       playerWrapper = false,
       wrapper = false,
       messageKnob = false,
@@ -17,7 +17,7 @@ var game = (() => {
       genericPlayerNames = [''];
       buffer = new DrawBuffer();
 
-  Object.defineProperties(self, {
+  Object.defineProperties(myself, {
     randos: {value: (x) => getRandomUsers(x||Math.floor(Math.random()*10))}, 
     canvas: {get: () => canvas}, 
     players: {get: () => players}, 
@@ -25,8 +25,21 @@ var game = (() => {
     ctx: {get: () => ctx},
     drawing: {get: () => drawing}
   });
-  self.bootstrap = function(initParams){
-    
+  myself.bootstrap = function(params = {}){
+    params.game && params.game.start().then(() => {
+      S.subscribe(self, 'end', e => {
+        console.log('GAME OVER', e.detail);    
+      });
+      S.subscribe(self, 'start', e => {
+        console.log('START GAME', e.detail);
+      });
+      S.subscribe(self, 'next', e => {
+        console.log('NEXT ROUND', e.detail);
+      });
+      S.subscribe(self, 'startCountdown', e => {
+        console.log('COUNTDOWN', e.detail);
+      });
+    });
     //listRooms();
 
     /*
@@ -48,11 +61,11 @@ var game = (() => {
     */
   };
 
-//   self.empty = () => Router.clearTemplates() && self;
-//   self.show = (template, options={}) => (parent = options.overlay?overlay.cleanup():content) && Router.getTemplate(template).then(t => t.appendTo(parent)).then(t => {
+//   myself.empty = () => Router.clearTemplates() && myself;
+//   myself.show = (template, options={}) => (parent = options.overlay?overlay.cleanup():content) && Router.getTemplate(template).then(t => t.appendTo(parent)).then(t => {
 //     if(!options || !options.overlay) content.attr('class','p' + content.children().toArray().indexOf(t.get(0)));
 //   })
-//   self.cleanup = template => {
+//   myself.cleanup = template => {
 //     $(`link[for='${template}'], .wrapper.${template}`).remove();
 //     let children = content.children().toArray();
 //     let index = (content.attr('class')||'').slice(1);
@@ -60,7 +73,7 @@ var game = (() => {
 //       content.attr('class', 'p' + (children.length-1));
 //     }
 //   };
-//   self.showlogin = () => Router.getTemplate('login').then(html => {
+//   myself.showlogin = () => Router.getTemplate('login').then(html => {
 //     $('<section>').html(html).appendTo(content);
 //   })
   function listRooms(){
@@ -194,6 +207,6 @@ var game = (() => {
       return chosenMessage = prependUserName + messages[Math.floor(Math.random() * messages.length)];
     })
   }
-  return self;
+  return myself;
 })();
 R.init().then(game.bootstrap, e => {console.warn("Unable to init app", e)});

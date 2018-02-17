@@ -115,7 +115,7 @@ class Socket{
     if(oldSocket){ oldSocket.close(1000) }
     let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + path);
     ws.addEventListener('open',(e) => {
-      promise.then(e);
+      promise.then(this);
       this.startKeepAlive();
       this.onopen(e);
     });
@@ -219,7 +219,7 @@ class ROUTER{
             view: 'main',
             init(params){
               //Subscribe to rooms in the lobby.
-              S.go('rooms').then(() => {
+              return S.go('rooms').then(() => {
                 S.subscribe(Q('#rooms'), 'rooms', ({target:el,detail:rooms}) => {
                   rooms = rooms.map(room => 
                     $(`<room>`).append(() => Object.keys(room).map(k => 
@@ -246,24 +246,29 @@ class ROUTER{
                 $('buttons').html(`<p>We\'ll log you in using ${e.target.innerHTML}... one moment.</p>`)
                 setTimeout(() => window.location.href = "/api/" + e.target.id, 500);
                 e.preventDefault();
-              })
+              });
+              return {login: true};
             },
             view: 'login'
           },
           '/room/:rid': {
             init(args){
-              S.go('room/' + args.vars.rid).then(S.subscribe.bind(S, $('<div>')[0], 'room', ({detail:room}) => {
-                console.info("ROOM JOINED:",room);
-                S.subscribe(self, 'end', e => {
-                  console.log(e);    
-                });
-                S.subscribe(self, 'start', e => {
-                  console.log(e);
-                });
-                S.subscribe(self, 'next', e => {
-                  console.log(e);
-                });
-              }));
+              return {game: {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)}};
+//               .then(S.subscribe.bind(S, $('<div>')[0], 'room', ({detail:room}) => {
+//                 console.info("ROOM JOINED:",room);
+//                 S.subscribe(self, 'end', e => {
+//                   console.log(e);    
+//                 });
+//                 S.subscribe(self, 'start', e => {
+//                   console.log(e);
+//                 });
+//                 S.subscribe(self, 'next', e => {
+//                   console.log(e);
+//                 });
+//                 S.subscribe(self, 'startCountdown', e => {
+                 
+//                 })
+//               }))
             },
             view: 'room'
           },
@@ -315,9 +320,8 @@ class ROUTER{
           .then(overlay)
           .then(templateFill)
           .then(templateActions)
-          .then(() => params);
     }
-    show(path, options={}){
+    show(path, options={}, chain){
         if(!path) return Promise.resolve(false);
         if(options && options.target) options = {};
         let reqPath = path;
@@ -335,11 +339,11 @@ class ROUTER{
               window.history.pushState(Object.assign({}, this.params, options), path.title, reqPath);   
               this.currentPath = reqPath;
             }
-            return init;
+            return init.then(r => Object.assign(safeObject(chain), safeObject(r)));
         });
 
     }
-    templateFill(){
+    templateFill(chain){
       let user = this.params.user;
       let username, birthday = "";
       try{username = user.user._json.name.familyName;}
@@ -353,14 +357,15 @@ class ROUTER{
           .map(c => $(`<span class="${c.key}">${c.value}</span>`))
         children.length && $(s).empty().append(children);
       });
-      return true;
+      return chain;
     }
-    templateActions(){
+    templateActions(chain){
       window.addEventListener('onbeforeunload',e => {
 
       })
       $('h1').on('click', R.go.bind(R, '/'));
       $('[logout]').on('click', () => window.location.href='/api/logout');
+      return chain;
     }
     go(path,o){
       Object.assign(this.params, {path,o})

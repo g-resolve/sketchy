@@ -25,6 +25,7 @@ class Room{
       ranked: true,
       turnTime: 10000,
       languageFilter: true,
+      startDelay: 10000,
       name: "WeScribble Room " + id
     }
     Object.defineProperty(this, 'players', {configurable: true, writeable: true, enumerable: true,
@@ -104,6 +105,10 @@ class Room{
     console.log(this.name + ": Starting Round " + this.currentRound)
     P(this).drawClock = setTimeout(this.endRound.bind(this), time||this.turnTime)
   }
+  startCountdown(){
+    this.broadcast({startCountdown: this.startDelay})
+    setTimeout(() => this.start(), this.startDelay);
+  }
   start(){
     let canStart = this.players.value.length >= this.playersToStart;
     if(this.state > 0 || !canStart) return false;
@@ -131,7 +136,7 @@ class Room{
 
   addPlayer(player){
     this.players.add(player);
-    this.start();
+    this.startCountdown();
     return player;
   }
   updateStatus(){
@@ -141,7 +146,7 @@ class Room{
     let kickPlayer = () => {
       let renewedSocket = global.playerSocketMap.get(player.id);
       let renewedPlayer = renewedSocket && renewedSocket.player;
-      if(playerRenewed && (player.socket.readyState >= 2)){
+      if(renewedPlayer && (player.socket.readyState >= 2)){
         this.players.delete(player);
       }
     }
