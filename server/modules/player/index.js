@@ -91,10 +91,10 @@ class Player{
     //return this.currentRoom.message({content, from: this});
   }
   ping(){
-    console.log(this.name, 'pong');
     return this.currentRoom && this.currentRoom.resetKickTimer(this);
   }
   send(data){
+    console.log('Send:', data);
     data = JSON.stringify(safeObject(data));
     if(this.socket.readyState == 1){
       this.socket.send(data);  

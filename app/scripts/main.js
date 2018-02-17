@@ -37,6 +37,13 @@ var game = (() => {
         console.log('NEXT ROUND', e.detail);
       });
       S.subscribe(self, 'startCountdown', e => {
+        let trimTime = e.detail % 1000;
+        let timeRemaining = e.detail - trimTime;
+        console.log("Burning ", trimTime, "ms");
+        setTimeout(() => {
+          let interval = setInterval(() => console.log("Countdown Tick"), 1000);
+          setTimeout(() => clearInterval(interval), timeRemaining);
+        }, trimTime);
         console.log('COUNTDOWN', e.detail);
       });
     });

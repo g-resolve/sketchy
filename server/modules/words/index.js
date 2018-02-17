@@ -28,6 +28,9 @@ class WordSmith{
         return new Promise(res => 
           http.get(wordAPI + serialize(wordObj), req => {
             let data = '';
+            req.on('error', e => {
+              debugger;
+            })
             req.on('data', d => data += d);
             req.on('end', d => res(JSON.parse(data).map(w => ({word: w.word, def: w.defs.splice(0,4), freq: parseInt(w.tags[0].split(':')[1])}))));
           })
