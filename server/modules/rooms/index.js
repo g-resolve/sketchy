@@ -115,12 +115,14 @@ class Room{
     return this;
   }
   endRound(){
-    console.log(this.name + ": Ending Round")
+    console.log(this.name + ": Ending Round");
     if(this.isComplete){
       this.state = STATES.ENDED;
+      this.broadcast({end:true});
     }else{
       this.currentRound++;
       this.resetDrawClock();
+      this.broadcast({next:true});
     }
   }
   save(){

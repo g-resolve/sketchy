@@ -153,7 +153,10 @@ class Socket{
   subscribe(el, method, callback){
     if(!el || !callback) return false;
     let subs = P(this).subscriptions = P(this).subscriptions || {};
-    subs[method] = [].concat.apply(subs[method]||[], [{el,callback}]);
+    let subscriptions = subs[method] || [];
+    let existing = subscriptions.find(sub => sub.el == el);
+    if(existing) return true;
+    subs[method] = [].concat.apply(subscriptions||[], [{el,callback}]);
     el.addEventListener(method, callback);
   }
   onmessage({data:message}){
@@ -173,8 +176,8 @@ class Socket{
         if(typeof this['on'+k.toLowerCase()] == 'function'){
           this['on' + k.toLowerCase()](eventData);
         }
-        let customEvent = new CustomEvent(k.toLowerCase(), {detail: eventData});
-        window.dispatchEvent(customEvent);
+//         let customEvent = new CustomEvent(k.toLowerCase(), {detail: eventData});
+//         window.dispatchEvent(customEvent);
         //console.log(`Dispatched event [${k}] with data`, eventData);
         
       })
@@ -251,7 +254,15 @@ class ROUTER{
             init(args){
               S.go('room/' + args.vars.rid).then(S.subscribe.bind(S, $('<div>')[0], 'room', ({detail:room}) => {
                 console.info("ROOM JOINED:",room);
-
+                S.subscribe(self, 'end', e => {
+                  console.log(e);    
+                });
+                S.subscribe(self, 'start', e => {
+                  console.log(e);
+                });
+                S.subscribe(self, 'next', e => {
+                  console.log(e);
+                });
               }));
             },
             view: 'room'
@@ -346,7 +357,7 @@ class ROUTER{
     }
     templateActions(){
       window.addEventListener('onbeforeunload',e => {
-        
+
       })
       $('h1').on('click', R.go.bind(R, '/'));
       $('[logout]').on('click', () => window.location.href='/api/logout');
