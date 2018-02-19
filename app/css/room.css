@@ -2,6 +2,7 @@
   display: grid;
   padding: 0;
   background: #CCC;
+  grid-template-columns: 1fr 150px;
 }
 
 #players{
@@ -17,10 +18,11 @@
   grid-template-columns: 1fr 150px;
   grid-auto-flow: row;
   justify-content: end;
-  grid-row: 2;
+  grid-row: 1;
   max-height: 100%;
   overflow: hidden;
   /* padding-left: 220px; */
+  grid-column: 2;
 }
 #players player{
   display: grid;
@@ -143,7 +145,7 @@ player message{
   /* transform: scale(0.5); */
   /* border: 1px solid red; */
   overflow: auto;
-  grid-row: 2;
+  grid-row: 1;
   grid-column: 1;
 }
 #canvas, #canvas *{
@@ -175,6 +177,7 @@ player message{
   overflow: hidden;
   grid-template-rows: 8px 1fr 40px;
   align-content: end;
+  grid-row: 2;
 }
 #activity #knob{
   cursor: ns-resize;

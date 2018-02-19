@@ -36,6 +36,9 @@ var game = (() => {
       S.subscribe(self, 'next', e => {
         console.log('NEXT ROUND', e.detail);
       });
+      S.subscribe(self, 'reveal', e => {
+        console.log('REVELATION', e.detail);
+      });
       S.subscribe(self, 'startCountdown', e => {
         let trimTime = e.detail % 1000;
         let timeRemaining = e.detail - trimTime;
@@ -46,7 +49,11 @@ var game = (() => {
         }, trimTime);
         console.log('COUNTDOWN', e.detail);
       });
+      wrapper = document.querySelector('#wrapper');
+      messageKnob = document.querySelector("#knob");
+      messageKnob.addEventListener('mousedown', startDragKnob);
     });
+
     //listRooms();
 
     /*

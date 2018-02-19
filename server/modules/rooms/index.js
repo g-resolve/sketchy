@@ -30,6 +30,20 @@ class Room{
       startDelay: 10000,
       name: "WeScribble Room " + id
     }
+    
+    Object.defineProperty(this, 'word', {configurable:true, writeable: true, enumerable: true,
+      get(){
+        let word = {value:''};
+        if(!P(this).wordsForRounds) return word;
+        try{
+          word = P(this).wordsForRounds[this.currentRound-1];
+          word.value = word.word;
+        }catch(e){
+          console.error('Word fethc error',e);
+        }
+        return word;
+      }
+    })
     Object.defineProperty(this, 'players', {configurable: true, writeable: true, enumerable: true,
       get(){
         let obj = {
@@ -75,9 +89,10 @@ class Room{
         else return false;
       }
     });
-    config.turnTime = 5000;
+    config.turnTime = 60000;
     config.rounds = 10;
-    config.startDelay = 30 * 1000;
+    config.currentRound = 1;
+    config.startDelay = 5 * 1000;
     Object.assign(this, defaultConfig, config||{});
 
     return this;
@@ -106,8 +121,34 @@ class Room{
   }
   get wordsForRounds(){
     let existingWords = P(this).wordsForRounds;
-    let promises = existingWords && existingWords.length ? existingWords: new Array(this.rounds).fill().map(r => this.newWord);;
+    let promises = existingWords && existingWords.length ? existingWords: new Array(this.rounds).fill().map(r => this.newWord);
     return Promise.all(promises).then(r => P(this).wordsForRounds = r)
+  }
+  get wordStrategies(){
+    let wordsForRounds = P(this).wordsForRounds;
+    if(!wordsForRounds || !wordsForRounds.length) return false;
+    return wordsForRounds.map(wfr => this.wordStrategy(wfr.word))
+  }
+  get wordStrategy(){
+    return function(word){
+      word = Array.from(word||this.word.value);
+      return word.reduce((r,v,i,a) => {
+            let num = 1 - (Math.pow(i,1.25) / a.length);
+            if(num < 0) return r;
+            let cos = Math.cos(num) * this.turnTime;
+            let revealAt = Math.round(cos/1000)*1000;
+            //console.log(r[i-1]);
+            if(revealAt >= this.turnTime) revealAt -= r[i-1] ? (this.turnTime - r[i-1].revealAt)/2 : 1000;
+            if(r.find(r => r && r.revealAt == revealAt)) return r;
+            let letterPos = Math.random()*word.length>>0;
+            let obj = {revealAt, letterPos, revealLetter: word.splice(letterPos, 1)}
+            r.push(obj);
+            return r;
+        },[])
+      }.bind(this)
+  }
+  set wordStrategy(v){
+    delete P(this).wordStrategy
   }
   get $loki(){}
   set $loki(v){}
@@ -117,11 +158,13 @@ class Room{
 
   }
   clearWords(){
+    this.wordStrategy = false;
     delete P(this).wordsForRounds;
   }
   resetDrawClock(time){
     this.killDrawClock();
-    console.log(this.name + ": Starting Round " + this.currentRound)
+    console.log(this.name + ": Starting Round " + this.currentRound);
+    
     P(this).drawClock = setTimeout(this.endRound.bind(this), time||this.turnTime)
   }
   killDrawClock(){
@@ -147,24 +190,37 @@ class Room{
       return false;
     } 
     console.log("STARTING");
-    this.currentRound = 1;
-    this.resetDrawClock();
-    this.state = STATES.STARTED;
-    this.broadcast({start:this});
-    
+    this.currentRound = 0;
+    this.startRound({start:this});
     return this;
+  }
+  queueRevelation(roundNumber){
+    [this.wordStrategies[roundNumber]].forEach(ws => {
+      //Iterate through strategy and queue revelations
+      ws.forEach(wsi => {
+        //Queue on the word strategy item
+        setTimeout(() => this.broadcast({reveal: wsi}), wsi.revealAt);
+      })
+    })
+  }
+  startRound(toBroadcast){
+      this.state = STATES.STARTED;
+      this.resetDrawClock();
+      this.queueRevelation(this.currentRound++);
+      toBroadcast = toBroadcast || {next:this};
+      this.broadcast(toBroadcast);
   }
   endRound(){
     console.log(this.name + ": Ending Round");
+    let toBroadcast = {};
     if(this.isComplete){
       this.state = STATES.ENDED;
       this.clearWords();
-      this.broadcast({end:this});
+      toBroadcast = {end:this};
     }else{
-      this.currentRound++;
-      this.resetDrawClock();
-      this.broadcast({next:this});
+      this.startRound();
     }
+    this.updateStatus(toBroadcast);
   }
   save(){
 
@@ -175,7 +231,7 @@ class Room{
     this.startCountdown();
     return player;
   }
-  updateStatus(){
+  updateStatus(toBroadcast){
     console.log("Updating state");
     if(!this.players.value.length){
       console.log("Awww, everyone left. :(");
@@ -183,6 +239,8 @@ class Room{
       delete P(this).startTimeout;
       this.killDrawClock();
       this.state = STATES.AWAITING_PLAYERS;
+    }else{
+      toBroadcast && this.broadcast(toBroadcast);
     }
   }
   resetKickTimer(player){

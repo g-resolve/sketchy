@@ -26,7 +26,7 @@ ws-logout{
 .wrapper{
   /* position: relative; */
   display: block;
-  height: max-content;
+  height: 100%;
   overflow: visible;
   background: linear-gradient(#fff, #ccc);
   min-width: 100vw;
