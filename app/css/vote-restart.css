@@ -1,0 +1,35 @@
+.vote-restart{
+    background: rgba(0, 0, 0, 0.7);
+}
+.vote-restart section{
+    display: block;
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, 0%);
+    width: 300px;
+    height: max-content;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    color: #AAA;
+    padding: 20px 10px 20px 10px;
+    text-align: center;
+    background: linear-gradient(#555,#333);
+    box-shadow: 0px 0px 20px #000;
+}
+.vote-restart input{
+    display: none;
+}
+.vote-restart label{
+    display: inline-block;
+    margin: 5px;
+    background: #222;
+    padding: 5px;
+    width: 50px;
+    cursor: pointer;
+}
+.vote-restart label:hover{
+    background: #333;
+}
+.vote-restart h3{
+    margin: 0;
+}

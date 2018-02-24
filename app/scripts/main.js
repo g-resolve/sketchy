@@ -32,7 +32,7 @@ var game = (() => {
       S.subscribe(self, 'start', e => {
         console.log('START GAME', e.detail);
       });
-      S.subscribe(self, 'voteRestart', e => startVote(e.detail));
+      S.subscribe(self, 'voteRestart', e => voteRestart(e.detail));
       S.subscribe(self, 'newRound', e => updateRound(e.detail));
       S.subscribe(self, 'endRound', e => updateRound(e.detail));
       S.subscribe(self, 'reveal', e => updateWord(e.detail));
@@ -87,8 +87,17 @@ var game = (() => {
 //   myself.showlogin = () => Router.getTemplate('login').then(html => {
 //     $('<section>').html(html).appendTo(content);
 //   })
-  function startVote(){
-    debugger;
+  function voteRestart(){
+    R.show('vote-restart', {overlay: true}).then(template => {
+      let inputs  = $('input', template);
+      inputs.on('change', e => {
+        e.preventDefault();
+        S.send({messageRoom: {voteRestart: e.target.name}}).then(r => {
+          debugger;
+        })
+        $('section:first', template).empty().html('Survey Says...');
+      })
+    })
   }
   function countdownTick(time){
     let trimTime = time % 1000;

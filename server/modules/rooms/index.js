@@ -1,5 +1,5 @@
 const {WordSmith} = require('../words');
-const {PRIVATE:P, Coordinator, guid} = require('../utils');
+const {PRIVATE:P, Coordinator, guid, safeObject} = require('../utils');
 const {Player} = require('../player');
 const fs = require('fs');
 const KICK_TIME = 10000;
@@ -289,9 +289,13 @@ class Room{
     player.kickTimer = setTimeout(kickPlayer, KICK_TIME);
     return 'Kick timer reset for ' + KICK_TIME;
   }
-  message(m){
-    console.log("\r\nMessage:", m, "\r\nRecipients:", this.players.value);
-    return "I done did it!";
+  message(m, player){
+    m = safeObject(m);
+    let from = m.from;
+    delete m.from;
+    //Object.keys(m).map(k => typeof this[k] == 'function' ? )
+    console.log("\r\nMessage:", m, "\r\nRecipients:", this.players);
+    return "Complete";
   }
   broadcast(m,pid){
     if(pid instanceof Player){

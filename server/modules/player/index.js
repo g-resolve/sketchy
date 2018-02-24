@@ -87,8 +87,7 @@ class Player{
     return this.messageRoom.apply(this, [...arguments])
   }
   messageRoom(content){
-    return "WOW";
-    //return this.currentRoom.message({content, from: this});
+    return this.currentRoom && this.currentRoom.message({content, from: this});
   }
   ping(){
     return this.currentRoom && this.currentRoom.resetKickTimer(this);

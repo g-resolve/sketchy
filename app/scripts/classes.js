@@ -240,11 +240,11 @@ class ROUTER{
             },
             view: 'login'
           },
-          '/voteRestart':{
-            init(args){
-              debugger;
+          '/vote-restart':{
+            init(args, template){
+              return Promise.resolve(template);
             },
-            view: 'voterestart'
+            view: 'vote-restart'
           },
           '/room/:rid': {
             init(args){
@@ -310,7 +310,7 @@ class ROUTER{
         let parent = options.overlay?self.overlay.cleanup():self.content;
         return this.getTemplate(path.view).then(t => t.appendTo(parent)).then(t => {
             if(!options || !options.overlay) self.content.attr('class','p' + self.content.children().toArray().indexOf(t.get(0)));
-            let init = path.init.call(null, argsToPass);
+            let init = path.init.call(null, argsToPass, t);
             if(!(init instanceof Promise)){ init = Promise.resolve(init) }
             if(options.overlay){
               window.history.pushState(Object.assign({overlay: reqPath}, this.params, options), path.title, (this.currentPath||reqPath) + '?o=' + encodeURIComponent(reqPath));   
