@@ -1,4 +1,3 @@
-
 var game = (() => {
   let players = [], 
       myGUID = guid(), 
@@ -33,29 +32,27 @@ var game = (() => {
       S.subscribe(self, 'start', e => {
         console.log('START GAME', e.detail);
       });
-      S.subscribe(self, 'next', e => {
-        console.log('NEXT ROUND', e.detail);
-      });
-      S.subscribe(self, 'reveal', e => {
-        console.log('REVELATION', e.detail);
-      });
-      S.subscribe(self, 'startCountdown', e => {
-        let trimTime = e.detail % 1000;
-        let timeRemaining = e.detail - trimTime;
-        console.log("Burning ", trimTime, "ms");
-        setTimeout(() => {
-          let interval = setInterval(() => console.log("Countdown Tick"), 1000);
-          setTimeout(() => clearInterval(interval), timeRemaining);
-        }, trimTime);
-        console.log('COUNTDOWN', e.detail);
-      });
+      S.subscribe(self, 'voteRestart', e => startVote(e.detail));
+      S.subscribe(self, 'newRound', e => updateRound(e.detail));
+      S.subscribe(self, 'endRound', e => updateRound(e.detail));
+      S.subscribe(self, 'reveal', e => updateWord(e.detail));
+      S.subscribe(self, 'startCountdown', e => countdownTick(e.detail));
+      S.subscribe(self, 'room', e => updateRound(e.detail));
       wrapper = document.querySelector('#wrapper');
       messageKnob = document.querySelector("#knob");
       messageKnob.addEventListener('mousedown', startDragKnob);
     });
+    params.lobby && params.lobby.start().then(() => {
+      S.subscribe(Q('#rooms'), 'rooms', ({target:el,detail:rooms}) => {
+        rooms = rooms.map(room => 
+          $(`<room>`).append(() => Object.keys(room).map(k => 
+            $(`<${k} value="${room[k]}">`).html(room[k])))
+          .on('click',R.go.bind(R, '/room/' + room.id)));
+        $("#rooms").append(rooms); 
+      })
 
+    })
     //listRooms();
-
     /*
     wrapper = document.querySelector('#wrapper');
     canvasWrapper = document.querySelector('#canvas');
@@ -90,6 +87,28 @@ var game = (() => {
 //   myself.showlogin = () => Router.getTemplate('login').then(html => {
 //     $('<section>').html(html).appendTo(content);
 //   })
+  function startVote(){
+    debugger;
+  }
+  function countdownTick(time){
+    let trimTime = time % 1000;
+    let timeRemaining = time - trimTime;
+    setTimeout(() => {
+      let interval = setInterval(tick, 1000);
+      setTimeout(() => clearInterval(interval), timeRemaining);
+    }, trimTime);
+    function tick(){
+      console.log('Tick');
+    }
+  }
+  function updateRound(round){
+    //console.log("New Round", round);
+    updateWord(round.wordMask);
+  }
+  function updateWord(wordMask){
+    let wordEl = $("#word").empty();
+    (wordMask||[]).map(w => $('<ws-letter>').html(w).appendTo(wordEl))
+  }
   function listRooms(){
     $.getJSON('/api/rooms').promise().then(rooms => {
       rooms = rooms.map(room => $(`<room>`).append(() => Object.keys(room).map(k => $(`<${k} value="${room[k]}">`).html(room[k]).on('click',R.show.bind(R, '/room/')))));
@@ -223,4 +242,4 @@ var game = (() => {
   }
   return myself;
 })();
-R.init().then(game.bootstrap, e => {console.warn("Unable to init app", e)});
+R.init();

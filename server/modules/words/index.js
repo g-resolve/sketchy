@@ -23,7 +23,7 @@ class WordSmith{
     return this.init().then((wordBank)=>{
       let wordIndex = Math.floor(Math.random() * wordBank.length);
       let word = wordBank[wordIndex];
-      if(word && !word.def){
+      if(false && word && !word.def){
         let wordObj = {sp: word.word, md: 'fd', max: 1};
         return new Promise(res => 
           http.get(wordAPI + serialize(wordObj), req => {
@@ -32,7 +32,7 @@ class WordSmith{
               debugger;
             })
             req.on('data', d => data += d);
-            req.on('end', d => res(JSON.parse(data).map(w => ({word: w.word, def: w.defs.splice(0,4), freq: parseInt(w.tags[0].split(':')[1])}))));
+            req.on('end', d => res(JSON.parse(data||'[]').map(w => ({word: w.word, def: w.defs.splice(0,4), freq: parseInt(w.tags[0].split(':')[1])}))));
           })
         ).then(([fetchedWord]) => {
           wordBank[wordIndex].def = fetchedWord.def;

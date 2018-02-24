@@ -22,13 +22,6 @@ class Player{
       atg: 0,
       lastRoom: undefined
     }
-    Object.defineProperty(this, 'currentRoom', {configurable: true, writeable: true, enumerable: false,
-      get: () => P(this).currentRoom,
-      set: room => {
-        this.send({room});
-        return P(this).currentRoom = room;
-      }
-    });
     config = config || {};
     delete config.$loki;
     delete config.meta;
@@ -53,6 +46,13 @@ class Player{
   }
   joinRoom(rid){
    
+  }
+  get currentRoom(){
+    return P(this).currentRoom;
+  }
+  set currentRoom(room){
+    room && this.send({room:room.clean});
+    return P(this).currentRoom = room;
   }
   get email(){
     return P(this).email;
@@ -94,7 +94,7 @@ class Player{
     return this.currentRoom && this.currentRoom.resetKickTimer(this);
   }
   send(data){
-    console.log('Send:', data);
+    console.log('Update',this.name,':',data);
     data = JSON.stringify(safeObject(data));
     if(this.socket.readyState == 1){
       this.socket.send(data);  

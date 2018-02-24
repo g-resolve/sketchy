@@ -4,6 +4,27 @@
   background: #CCC;
   grid-template-columns: 1fr 150px;
 }
+#word{
+  border: 5px solid red;
+}
+ws-letter{
+  display: inline-block;
+  margin: 10px;
+  font-size: 25px;
+}
+#pencil{
+  width: 35vw;
+  height: 30vw;
+  min-width: 15px;
+  min-height: 10px;
+  max-width: 135px;
+  max-height: 130px;
+  display: none;
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  top: 0;
+}
 
 #players{
   user-select: none;
@@ -23,6 +44,7 @@
   overflow: hidden;
   /* padding-left: 220px; */
   grid-column: 2;
+  grid-row: 1 / span 2;
 }
 #players player{
   display: grid;
@@ -145,27 +167,13 @@ player message{
   /* transform: scale(0.5); */
   /* border: 1px solid red; */
   overflow: auto;
-  grid-row: 1;
+  grid-row: 2;
   grid-column: 1;
 }
 #canvas, #canvas *{
   user-select: none;
   overflow: hidden;
 }
-#pencil{
-  width: 35vw;
-  height: 30vw;
-  min-width: 15px;
-  min-height: 10px;
-  max-width: 135px;
-  max-height: 130px;
-  display: block;
-  position: absolute;
-  z-index: 10;
-  left: 0;
-  top: 0
-}
-
 #activity{
   background: #4c4c4c;
   /* width: 100vw; */
@@ -177,7 +185,7 @@ player message{
   overflow: hidden;
   grid-template-rows: 8px 1fr 40px;
   align-content: end;
-  grid-row: 2;
+  grid-row: 3;
 }
 #activity #knob{
   cursor: ns-resize;

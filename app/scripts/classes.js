@@ -199,8 +199,6 @@ class Socket{
     //message.guid = this.guid;
     ws.readyState && ws.send(JSON.stringify(message));  
     return confirm.await;
-    //console.log(api.readyState);
-    
   }
 }
 
@@ -217,17 +215,8 @@ class ROUTER{
         this.addRoutes({
           '/': {
             view: 'main',
-            init(params){
-              //Subscribe to rooms in the lobby.
-              return S.go('rooms').then(() => {
-                S.subscribe(Q('#rooms'), 'rooms', ({target:el,detail:rooms}) => {
-                  rooms = rooms.map(room => 
-                    $(`<room>`).append(() => Object.keys(room).map(k => 
-                      $(`<${k} value="${room[k]}">`).html(room[k])))
-                    .on('click',R.show.bind(R, '/room/' + room.id)));
-                  $("#rooms").append(rooms); 
-                })
-              })
+            init(args){
+              return {lobby: {params: args.vars, start: () => S.go('rooms')}}
             }
           },
           '/login': {
@@ -251,24 +240,15 @@ class ROUTER{
             },
             view: 'login'
           },
+          '/voteRestart':{
+            init(args){
+              debugger;
+            },
+            view: 'voterestart'
+          },
           '/room/:rid': {
             init(args){
               return {game: {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)}};
-//               .then(S.subscribe.bind(S, $('<div>')[0], 'room', ({detail:room}) => {
-//                 console.info("ROOM JOINED:",room);
-//                 S.subscribe(self, 'end', e => {
-//                   console.log(e);    
-//                 });
-//                 S.subscribe(self, 'start', e => {
-//                   console.log(e);
-//                 });
-//                 S.subscribe(self, 'next', e => {
-//                   console.log(e);
-//                 });
-//                 S.subscribe(self, 'startCountdown', e => {
-                 
-//                 })
-//               }))
             },
             view: 'room'
           },
@@ -288,7 +268,6 @@ class ROUTER{
         for(let k in obj){
             this.routes[k] = obj[k];
         }
-        //this.init().then(()=>this.show('/'));
     }
     init(){
         return $.get('/api/user').promise().then(data => {
@@ -298,7 +277,6 @@ class ROUTER{
         }, () => {debugger});
     }
     rejectAuth(){
-        //return this.show('/');
         return this.show('/').then(() => this.show('login', {overlay: true}));
     }
     addRoute(path, obj){
@@ -320,6 +298,7 @@ class ROUTER{
           .then(overlay)
           .then(templateFill)
           .then(templateActions)
+          .then(game.bootstrap);
     }
     show(path, options={}, chain){
         if(!path) return Promise.resolve(false);
@@ -369,7 +348,7 @@ class ROUTER{
     }
     go(path,o){
       Object.assign(this.params, {path,o})
-      this.solveEntryPoint()
+      return this.solveEntryPoint()
     }
     findPath(needle){
       if(!needle || (needle === '/')) return this.routes['/'];
@@ -385,7 +364,6 @@ class ROUTER{
               p = '.*';
             }
             let matched = needleParts[i] && new RegExp(p, 'i').test(needleParts[i]);
-            //let matched = needleParts.some(np => p && new RegExp(p, 'i').test(np))
             return {vars, matched};
           }).filter(v=>v.matched);
         let varsObj = hits.map(hit => hit.vars).filter(v=>v).reduce((obj,a) => Object.assign(obj, a), {});
@@ -403,7 +381,6 @@ class ROUTER{
             let ss = [$(`link[for=${name}]`),$(`<link rel="stylesheet" href="/css/${name}.css" for="${name}">`)].find(ss => ss.length)
             return new Promise(res => ss.appendTo(document.head).on('load', res.bind(null, $(`<section class="wrapper ${name}">`).prop('name',name).html(t))));
         });
-        //return new Promise(res => $("<div>").load(`/views/${name}.html`, res))
     }
     traverse(path, pathObj){
         pathObj = pathObj || this.routes[path] || (path = '/') && {view: 'main', init: () => {}};
