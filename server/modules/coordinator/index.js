@@ -34,7 +34,7 @@ class Coordinator{
   }
   addToRoom(player, rid){
     let room = this.rooms.get(rid);
-    return room && room.addPlayer(player);
+    return room && room.init().then(() => room.addPlayer(player));
   }
   
   get rosterFile(){ return __dirname + '/rooms.json'}

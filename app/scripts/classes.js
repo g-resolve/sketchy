@@ -300,6 +300,9 @@ class ROUTER{
           .then(templateActions)
           .then(game.bootstrap);
     }
+    close(path){
+      $('.'+path).removeAll();
+    }
     show(path, options={}, chain){
         if(!path) return Promise.resolve(false);
         if(options && options.target) options = {};

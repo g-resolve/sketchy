@@ -89,6 +89,9 @@ class Player{
   messageRoom(content){
     return this.currentRoom && this.currentRoom.message({content, from: this});
   }
+  vote(vote){
+    return this.currentRoom && this.currentRoom.vote({vote, voter: this});
+  }
   ping(){
     return this.currentRoom && this.currentRoom.resetKickTimer(this);
   }

@@ -27,6 +27,7 @@ var game = (() => {
   myself.bootstrap = function(params = {}){
     params.game && params.game.start().then(() => {
       S.subscribe(self, 'end', e => {
+        R.go('/');
         console.log('GAME OVER', e.detail);    
       });
       S.subscribe(self, 'start', e => {
@@ -41,6 +42,7 @@ var game = (() => {
       wrapper = document.querySelector('#wrapper');
       messageKnob = document.querySelector("#knob");
       messageKnob.addEventListener('mousedown', startDragKnob);
+      $("#messagebox").on('submit', sendGuess);
     });
     params.lobby && params.lobby.start().then(() => {
       S.subscribe(Q('#rooms'), 'rooms', ({target:el,detail:rooms}) => {
@@ -92,14 +94,16 @@ var game = (() => {
       let inputs  = $('input', template);
       inputs.on('change', e => {
         e.preventDefault();
-        S.send({messageRoom: {voteRestart: e.target.name}}).then(r => {
-          debugger;
+        S.send({vote: {restart: e.target.name}}).then(r => {
+          //debugger;
+          console.log("Sent vote", r);
         })
         $('section:first', template).empty().html('Survey Says...');
       })
     })
   }
   function countdownTick(time){
+    R.close('vote-restart');
     let trimTime = time % 1000;
     let timeRemaining = time - trimTime;
     setTimeout(() => {
@@ -112,7 +116,7 @@ var game = (() => {
   }
   function updateRound(round){
     //console.log("New Round", round);
-    updateWord(round.wordMask);
+    if(Array.isArray(round.wordMask)) updateWord(round.wordMask);
   }
   function updateWord(wordMask){
     let wordEl = $("#word").empty();
@@ -124,7 +128,14 @@ var game = (() => {
       $("#rooms").append(rooms);
     }, error => {console.error(error)})
   }
-
+  function sendGuess(e){
+    e.preventDefault();
+    S.send({messageRoom: {guess: e.target['guess-text'].value}})
+      .then(({messageRoom:{guess}}) => {
+        console.log(guess);
+      })
+    e.target['guess-text'].value = '';
+  }
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;
     let messageHeight = $("#messages").height();

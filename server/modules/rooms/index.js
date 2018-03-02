@@ -8,13 +8,14 @@ const STATES = {
   GAME_START_COUNTDOWN: 1,
   GAME_STARTED: 2,
   NEXT_ROUND_COUNTDOWN: 3,
-  GAME_ENDED: 4,
-  RESTART_COUNTDOWN: 5
+  VOTE_RESTART: 4,
+  RESTART_COUNTDOWN: 5,
+  GAME_ENDED: 6,
 }
 class Room{
   constructor(config){
     P(this).players = new Map();
-    let override = {turnTime: 20000, rounds: 1, startDelay: 1 * 1000};
+    let override = {turnTime: 30000, rounds: 10, startDelay: 5 * 1000};
     Object.assign(this, this.defaultConfig, config||{}, override);
     return this;
   }
@@ -53,21 +54,15 @@ class Room{
     return this.WS.word;
   }
   get word(){
-    let word = {value:''};
-    let round = this.currentRound - 1;
-    if(!P(this).wordsForRounds) return word;
-    try{
-      word = P(this).wordsForRounds[this.currentRound];
-      if(word) word.value = word.word;
-    }catch(e){
-      console.error('Word fetch error',e);
-    }
+    let round = this.currentRound ? this.currentRound -1 : this.currentRound;
+    let word = this.wordsForRounds().value && this.wordsForRounds().value[round] || {word:''};
+    word.value = word.word;
     return word;
   }
   get wordMask(){
-    let word = this.word && this.word.value || '';
+    let word = this.word.value;
     let reveals = this.revelations.map(r => r.letterPos);
-    let revealAll = (this.state == STATES.NEXT_ROUND_COUNTDOWN) || (this.state == STATES.GAME_ENDED);
+    let revealAll = (this.state == STATES.NEXT_ROUND_COUNTDOWN) || (this.state == STATES.VOTE_RESTART);
     if(word && word.length){
       word = word.split('').map((l,i) => revealAll || / |\-/.test(l) || reveals.includes(i) ? l : '_');
     }
@@ -88,18 +83,23 @@ class Room{
   }
   get wordsForRounds(){
     let existingWords = P(this).wordsForRounds;
-    if(existingWords){ return Promise.resolve(existingWords) }
-    return Promise.all(new Array(this.rounds).fill().map(r => this.newWord))
-      .then(r => P(this).wordsForRounds = r);
+    let returnObj = {promise: Promise.resolve(existingWords), value: existingWords};
+    if(!existingWords){
+      returnObj.promise = Promise.all(new Array(this.rounds).fill().map(r => this.newWord))
+      .then(r => P(this).wordsForRounds = returnObj.value = r);
+    }
+    return function(){
+      return this;
+    }.bind(returnObj);
   }
   get wordStrategies(){
-    let wordsForRounds = P(this).wordsForRounds;
-    if(!wordsForRounds || !wordsForRounds.length) return false;
-    return wordsForRounds.map(wfr => this.wordStrategy(wfr.word))
+    return this.wordsForRounds().promise.then(wfrs => {
+      return wfrs.map(wfr => this.wordStrategy(wfr.word))
+    });
   }
   get wordStrategy(){
     return function(word){
-      word = Array.from(word||this.word.value)
+      word = Array.from(word||'')
         .map((c,i) => !/ |\-/.test(c) && [i,c]).filter(v=>v).slice(1);
       return word.reduce((r,v,i,a) => {
         let half = (this.turnTime / 2);
@@ -129,6 +129,7 @@ class Room{
     }
     if(v == STATES.GAME_START_COUNTDOWN){
       if(changed){
+        this.clearWords();
         this.countdownStartedAt = Date.now();
         clearTimeout(P(this).startTimeout);
         P(this).startTimeout = setTimeout(() => this.start(), this.startDelay);
@@ -148,11 +149,15 @@ class Room{
       }
       this.broadcast({nextRoundCountdown: this.nextRoundDelay - (Date.now() - this.countdownStartedAt)});        
     }
-    if(v == STATES.GAME_ENDED){
+    if(v == STATES.VOTE_RESTART){
       this.voteRestart();
     }
     if(v == STATES.RESTART_COUNTDOWN){
 
+    }
+    if(v == STATES.GAME_ENDED){
+      this.clearWords();
+      this.broadcast({end:this.clean});
     }
     return this.gameState = v;
   }
@@ -188,8 +193,13 @@ class Room{
   set $loki(v){}
   get meta(){}
   set meta(v){}
+  init(force){
+    return P(this).initialized && !force ? Promise.resolve(true) : this.clearWords().wordsForRounds().promise.then(r => {
+      return P(this).initialized = true
+    });
+  }
   addPlayer(player){
-    return this.wordsForRounds.then(() => {
+    
        if(player instanceof Player){
         let existing = this.getPlayer(player.id);
         if(existing){
@@ -202,9 +212,7 @@ class Room{
         return player;
       }
       return false;
-    }, () => {
-      debugger;
-    });
+    
   }
   deletePlayer(player){
     if(!(player instanceof Player)){
@@ -228,15 +236,13 @@ class Room{
       .updateState(STATES.GAME_STARTED)
       .resetDrawClock()
       .queueRevelation()
-      .broadcast(toBroadcast||{newRound:this.clean});
+      .then(r => this.broadcast(toBroadcast||{newRound:this.clean}));
   }
   endRound(toBroadcast){
     console.log(this.name + ": Ending Round");
     this.revelations = [];
     if(this.isComplete){
-      this.state = STATES.GAME_ENDED;
-      this.clearWords();
-      toBroadcast = {end:this.clean};
+      this.state = STATES.VOTE_RESTART;
     }else{
       this.state = STATES.NEXT_ROUND_COUNTDOWN;
     }
@@ -245,17 +251,19 @@ class Room{
     this.broadcast(toBroadcast);
   }
   queueRevelation(){
-    [this.wordStrategies[this.currentRound-1]].forEach(ws => {
-      //Iterate through strategy and queue revelations
-      ws && ws.forEach(wsi => {
-        //Queue on the word strategy item
-        setTimeout(() => {
-          this.revelations.push(wsi); 
-          this.broadcast({reveal:this.wordMask})
-        }, wsi.revealAt);
+    return this.wordStrategies.then(wstrats => {
+      [wstrats[this.currentRound-1]].forEach(ws => {
+        //Iterate through strategy and queue revelations
+        ws && ws.forEach(wsi => {
+          //Queue on the word strategy item
+          setTimeout(() => {
+            this.revelations.push(wsi); 
+            this.broadcast({reveal:this.wordMask})
+          }, wsi.revealAt);
+        })
       })
+      return this;
     })
-    return this;
   }
   save(){
 
@@ -267,12 +275,24 @@ class Room{
       //toBroadcast && this.broadcast(toBroadcast);
     }else if([STATES.AWAITING_PLAYERS,STATES.GAME_START_COUNTDOWN].includes(this.state)){
       this.state = STATES.GAME_START_COUNTDOWN;
-    }else if(player && (this.state == STATES.GAME_ENDED)){
+    }else if(player && (this.state == STATES.VOTE_RESTART)){
       this.voteRestart.call(player);
     }
   }
-  voteRestart(){
-    (this.broadcast||this.send).call(this, {voteRestart: true})
+  voteRestart(votes){
+    this.votes = this.votes || new Map();
+    if(!votes){
+      (this.broadcast||this.send).call(this, {voteRestart: true})  
+    }else{
+      let tally = this.playerList.map(p => (this.votes.get(p)||{}).restart);
+      if((tally.filter(v => v == "yes").length / tally.length) > 0.5){
+        this.init(true).then(() => this.state = STATES.GAME_START_COUNTDOWN)
+        
+      }else if((tally.filter(v => v == "no").length / tally.length) > 0.5){
+        this.state = STATES.GAME_ENDED;
+      }
+    }
+    return true;
   }
   filterPlayers(){
     this.players = this.players.filter(player => player.socket.readyState !== player.socket.CLOSED);
@@ -292,10 +312,33 @@ class Room{
   message(m, player){
     m = safeObject(m);
     let from = m.from;
-    delete m.from;
-    //Object.keys(m).map(k => typeof this[k] == 'function' ? )
-    console.log("\r\nMessage:", m, "\r\nRecipients:", this.players);
-    return "Complete";
+    let methods = m.content;
+    let keys = Object.keys(methods);
+    let promises = keys
+      .map(k => typeof this[k] == 'function' ? this[k](methods[k],from) : false)
+    return Promise.all(promises)
+      .then(results => results.reduce((obj,v,i) => Object.assign(obj, {[keys[i]]:v}),{}));
+  }
+  vote(voteObj){
+    if(this.state == STATES.VOTE_RESTART){
+      this.votes.set(voteObj.voter.id, voteObj.vote);
+      if(voteObj.vote && voteObj.vote.restart){
+        this.voteRestart(this.votes)
+      }
+      return true;
+    }
+    return false;
+  }
+  guess(g,p){
+    let word = this.word.word.replace(/[^\w\s]/gi,'');
+    let guess = g.replace(/[^\w\s]/gi,'');
+    word = new RegExp(word,'i');
+    let match = word.test(guess);
+    if(match){
+      return word;
+    }else{
+      return false;
+    }
   }
   broadcast(m,pid){
     if(pid instanceof Player){
@@ -317,6 +360,7 @@ class Room{
   clearWords(){
     this.wordStrategy = false;
     delete P(this).wordsForRounds;
+    return this;
   }
   resetDrawClock(time){
     this.killDrawClock();
