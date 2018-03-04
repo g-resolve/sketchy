@@ -15,7 +15,7 @@ const STATES = {
 class Room{
   constructor(config){
     P(this).players = new Map();
-    let override = {turnTime: 30000, rounds: 10, startDelay: 5 * 1000};
+    let override = {turnTime: 10000, rounds: 100, startDelay: 5 * 1000};
     Object.assign(this, this.defaultConfig, config||{}, override);
     return this;
   }
@@ -136,7 +136,7 @@ class Room{
       }
       let delta = Date.now() - this.countdownStartedAt;
       if(delta > this.startDelay) this.start()
-      this.broadcast({startCountdown: this.startDelay - (Date.now() - this.countdownStartedAt)});
+      this.broadcast({startCountdown: {room: this.clean, timeLeft: this.startDelay - (Date.now() - this.countdownStartedAt)}});
     }
     if(v == STATES.GAME_STARTED){
       
@@ -147,7 +147,7 @@ class Room{
         clearTimeout(P(this).startTimeout);
         P(this).startTimeout = setTimeout(() => this.startRound(), this.nextRoundDelay);
       }
-      this.broadcast({nextRoundCountdown: this.nextRoundDelay - (Date.now() - this.countdownStartedAt)});        
+      this.broadcast({nextRoundCountdown: {room: this.clean, timeLeft: this.nextRoundDelay - (Date.now() - this.countdownStartedAt)}});        
     }
     if(v == STATES.VOTE_RESTART){
       this.voteRestart();
@@ -332,8 +332,8 @@ class Room{
   guess(g,p){
     let word = this.word.word.replace(/[^\w\s]/gi,'');
     let guess = g.replace(/[^\w\s]/gi,'');
-    word = new RegExp(word,'i');
-    let match = word.test(guess);
+    let match = new RegExp(word,'i');
+    match = match.test(guess);
     if(match){
       return word;
     }else{

@@ -3,6 +3,7 @@
   padding: 0;
   background: #CCC;
   grid-template-columns: 1fr 150px;
+  grid-template-rows: auto 1fr auto;
 }
 #word{
   border: 5px solid red;
@@ -24,6 +25,8 @@ ws-letter{
   z-index: 10;
   left: 0;
   top: 0;
+  transform: translate(-5px, 5px);
+  /*   border: 1px solid red; */
 }
 
 #players{
@@ -173,11 +176,15 @@ player message{
 #canvas, #canvas *{
   user-select: none;
   overflow: hidden;
+  width: auto;
+  height: auto;
 }
 #activity{
   background: #4c4c4c;
-  /* width: 100vw; */
-  height: auto;
+  width: 100vw;
+  height: 120px;
+  max-height: 240px;
+  min-height: 70px;
   /* border-bottom: 1px solid #0F0; */
   /* border-top: 1px solid #0F0; */
   grid-column: 1 / span 2;
@@ -189,9 +196,10 @@ player message{
 }
 #activity #knob{
   cursor: ns-resize;
-  position: relative;
+  position: sticky;
   z-index: 1;
   background:  #F00;
+  top:  0;
 }
 #activity #messagebox{
   display: flex;
@@ -220,7 +228,7 @@ player message{
 #messages{
   display: flex;
   width: 100vw;
-  height: 60;
+  height: auto;
   overflow: auto;
   /* grid-auto-rows: 12px; */
   /* align-content: end; */
@@ -233,15 +241,78 @@ player message{
 #messages message{
   display: block;
   /* border-right: 1px solid #F00; */
-  padding: 1px;
+  padding: 0px 8px;
   white-space: nowrap;
   max-width: calc(100% - 20px);
   text-overflow: ellipsis;
   overflow: hidden;
   font-size: 12px;
-  min-height: 10px;
+  min-height: 17px;
   justify-self: flex-end;
 }
 #messages message:before{
   content: attr(timestamp) " " attr(from) ": ";
 }
+
+#announce{
+  position: absolute;
+  width: 300px;
+  height: 200px;
+/*   background: #00F; */
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -30%);
+}
+#announce-round{
+  font-size: 50px;
+}
+#announce-round-text{
+  animation: slam 1s ease-in 0s forwards;
+  display: inline-block;
+}
+#announce-round-number{
+  font-size: 80px;
+  position: relative;
+  z-index: 1;
+  animation: slam 1s cubic-bezier(0.6, -0.28, 0.74, 0.05) 1s 1 normal forwards;
+  transform: scale(6);
+  opacity: 0;
+  display: inline-block;
+}
+@keyframes slam{
+  0% {
+    transform: scale(6);
+    opacity: 0;
+  }
+  20%{
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.5);
+  }
+  85% {
+    transform: scale(1);
+  }
+  90% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* 
+<div id="announce">
+  <div id="announce-round">
+    <span id="announce-round-text">Round</span>
+    <span id="announce-round-number">1</span>
+  </div>
+  <div id="announce-countdown">
+    <span id="announce-countdown-text">starts in</span>
+    <span id="announce-countdown-number">5</span>
+  </div>
+</div>
+*/

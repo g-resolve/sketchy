@@ -82,7 +82,10 @@ class Player{
 }
 class Messenger{
   constructor(){
-    this.messages = $("#messages");
+    //this.messages = $("#messages");
+  }
+  get messages(){
+    return $("#messages");
   }
   add(m){
     let date = new Date();
@@ -93,6 +96,7 @@ class Messenger{
   }
   cleanup(){
     let messages = this.messages.children().toArray();
+    if(!this.messages.length) return false;
     messages.splice(-10);
     this.messages.get(0).scrollTo(0,this.messages.height())
     messages.forEach(m => m.remove());

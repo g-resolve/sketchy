@@ -5,10 +5,13 @@ var game = (() => {
       canvas = false, 
       ctx = false, 
       drawing = false, 
+      guessedWord = false,
       trace = [], 
       myself = {},
       playerWrapper = false,
       wrapper = false,
+      canvasWrapper = false,
+      activity = false,
       messageKnob = false,
       content = $("#content"),
       overlay = $("#overlay"),
@@ -34,15 +37,30 @@ var game = (() => {
         console.log('START GAME', e.detail);
       });
       S.subscribe(self, 'voteRestart', e => voteRestart(e.detail));
-      S.subscribe(self, 'newRound', e => updateRound(e.detail));
-      S.subscribe(self, 'endRound', e => updateRound(e.detail));
+      S.subscribe(self, 'newRound', e => startNewRound(e.detail));
+      S.subscribe(self, 'endRound', e => endRound(e.detail));
       S.subscribe(self, 'reveal', e => updateWord(e.detail));
+      S.subscribe(self, 'nextRoundCountdown', e => countdownTick(e.detail));
       S.subscribe(self, 'startCountdown', e => countdownTick(e.detail));
       S.subscribe(self, 'room', e => updateRound(e.detail));
-      wrapper = document.querySelector('#wrapper');
+      wrapper = document.querySelector('.room.wrapper');
+      canvasWrapper = document.querySelector('#canvas');
+      canvas = document.querySelector('canvas');
+      pencil = document.querySelector('#pencil');
       messageKnob = document.querySelector("#knob");
+      activity = $("#activity");
+      playerWrapper = document.querySelector('#players');
       messageKnob.addEventListener('mousedown', startDragKnob);
+      canvasWrapper.addEventListener('mousedown', redraw);
+      canvasWrapper.addEventListener('contextmenu', e=>e.preventDefault());
+      window.addEventListener('mousemove', handleMouseMove);
+      ctx = canvas.getContext('2d');
+
       $("#messagebox").on('submit', sendGuess);
+      resetBounds();
+
+      //Fake Stuff
+      injectPlayers().then(artificialActivities);
     });
     params.lobby && params.lobby.start().then(() => {
       S.subscribe(Q('#rooms'), 'rooms', ({target:el,detail:rooms}) => {
@@ -62,11 +80,12 @@ var game = (() => {
     pencil = document.querySelector('#pencil');
     messageKnob = document.querySelector("#knob");
     playerWrapper = document.querySelector('#players');
-    ctx = canvas.getContext('2d');
-    S.onlivepaint = redraw;
     messageKnob.addEventListener('mousedown', startDragKnob);
     canvasWrapper.addEventListener('mousedown', e => {});
     window.addEventListener('mousemove', handleMouseMove);
+    ctx = canvas.getContext('2d');
+    S.onlivepaint = redraw;
+
     canvasWrapper.addEventListener('mouseup', e => {});
     injectPlayers().then(artificialActivities);
     resetBounds();
@@ -102,8 +121,12 @@ var game = (() => {
       })
     })
   }
-  function countdownTick(time){
+  function countdownTick(room){
+    let time = room.timeLeft;
     R.close('vote-restart');
+    guessedWord = false;
+    let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
+    wrapper.append(document.importNode(announcement, true));
     let trimTime = time % 1000;
     let timeRemaining = time - trimTime;
     setTimeout(() => {
@@ -114,13 +137,24 @@ var game = (() => {
       console.log('Tick');
     }
   }
+  function startNewRound(round){
+    $("#announce").remove();
+    guessedWord = false;
+    clearCanvas();
+    updateRound(round);
+  }
+  function endRound(round){
+    updateRound(round);
+  }
   function updateRound(round){
     //console.log("New Round", round);
     if(Array.isArray(round.wordMask)) updateWord(round.wordMask);
+    resetBounds();
+
   }
   function updateWord(wordMask){
     let wordEl = $("#word").empty();
-    (wordMask||[]).map(w => $('<ws-letter>').html(w).appendTo(wordEl))
+    (guessedWord||wordMask||[]).map(w => $('<ws-letter>').html(w).appendTo(wordEl))
   }
   function listRooms(){
     $.getJSON('/api/rooms').promise().then(rooms => {
@@ -132,21 +166,24 @@ var game = (() => {
     e.preventDefault();
     S.send({messageRoom: {guess: e.target['guess-text'].value}})
       .then(({messageRoom:{guess}}) => {
-        console.log(guess);
+        if(guess){
+          updateWord(guessedWord = guess.split(''));
+        }
       })
     e.target['guess-text'].value = '';
   }
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;
-    let messageHeight = $("#messages").height();
-    $("#messages").prop('originalHeight',messageHeight);
+    let messageHeight = activity.height();
+    activity.prop('originalHeight',messageHeight);
     wrapper.addEventListener('mousemove', doDragKnob);
     wrapper.addEventListener('mouseup', stopDragKnob);
   }
   function doDragKnob(e){
+    if(!e.buttons) return stopDragKnob(e);
     let offset = wrapper.dragStart - e.screenY;
-    let newHeight = $("#messages").prop('originalHeight') + offset;
-    $("#messages").height(newHeight);
+    let newHeight = activity.prop('originalHeight') + offset;
+    activity.height(newHeight);
     
   }
   function stopDragKnob(e){
@@ -158,9 +195,15 @@ var game = (() => {
   }
   function resetBounds(){
     canvasWrapper.bounds = canvasWrapper.getBoundingClientRect();
-    //pencil.bounds = pencil.getBoundingClientRect();
+    let content = $('#content').get(0);
+    content.bounds = content.getBoundingClientRect();
+    canvas.bounds = canvas.getBoundingClientRect();
+    wrapper.bounds = wrapper.getBoundingClientRect();
+    pencil.bounds = pencil.getBoundingClientRect();
+    let id = ctx.getImageData(0,0,ctx.canvas.width,ctx.canvas.height);
     canvas.setAttribute('width',canvasWrapper.getBoundingClientRect().width);
-    canvas.setAttribute('height',canvasWrapper.getBoundingClientRect().height);
+    canvas.setAttribute('height',content.bounds.height - 120);
+    ctx.putImageData(id,0,0);
     playerWrapper.bounds = playerWrapper.getBoundingClientRect();
   }
   function handleMouseMove(e){
@@ -170,30 +213,36 @@ var game = (() => {
   }
   function movePencil(e){
     //console.log(canvasWrapper.bounds.top);
+    //console.log(e);
     pencil.bounds = pencil.getBoundingClientRect();
-    pencil.style.top = Math.floor(e.pageY - pencil.bounds.height );
+    pencil.style.top = Math.floor(e.pageY - wrapper.bounds.top - pencil.bounds.height );
     pencil.style.left = e.pageX;
-    if((e.pageY >= (canvasWrapper.bounds.bottom - 12)) || (e.pageY < canvasWrapper.bounds.top) || (e.pageX > playerWrapper.bounds.left)){
+    if((e.pageY >= (canvasWrapper.bounds.bottom)) || (e.pageY < canvasWrapper.bounds.top) || (e.pageX > playerWrapper.bounds.left)){
       return $(pencil).hide('fast');
     }else{
       $(pencil).show();
     }
   }
+  function clearCanvas(){
+    ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height)
+  }
   function redraw(e){
     let {lastX, lastY} = ctx;
-    let {buttons, x:currX, y:currY, guid:receivedDraw} = e;
+    let {buttons, x:currX, pageY:currY, guid:receivedDraw} = e;
+    canvas.bounds = canvas.getBoundingClientRect();
     //console.log(e.target);
 
     //if(e.target && (e.target.tagName == "IMG")) return;
     if(!receivedDraw){
-      console.log("Sending Draw");
+      //console.log("Sending Draw");
       buffer.queue({livePaint: {buttons, color: false, lastX, lastY, x:currX, y:currY}})
     }else{
       console.log("Received a Draw");
     }
-    currX -= canvasWrapper.bounds.left;
-    currY -= canvasWrapper.bounds.top;
-     //console.log(e);
+
+    currX -= canvas.bounds.left;
+    currY -= canvas.bounds.top;
+    //console.log(canvas.bounds.top,currY);
     if(!buttons) return (delete ctx.lastX) + (delete ctx.lastY);
     ctx.strokeStyle = '#333';
     ctx.lineJoin = 'round';
@@ -203,6 +252,7 @@ var game = (() => {
     ctx.lineTo(ctx.lastX = currX, ctx.lastY = currY);
     ctx.closePath();
     ctx.stroke();
+        console.log(currX,currY,canvas.bounds);
   }
   function handleSocketOpen({target:api}){
     send({handshake: {guid:myGUID}})
@@ -248,6 +298,12 @@ var game = (() => {
     
   }
   function getRandomUsers(number){
+    return Promise.resolve({results: [
+      {picture: {thumbnail: ''}, name: {first: "Jim", last: "Smith"}},
+      {picture: {thumbnail: ''}, name: {first: "Andy", last: "Newman"}},
+      {picture: {thumbnail: ''}, name: {first: "Brad", last: "Pitt"}},
+      {picture: {thumbnail: ''}, name: {first: "Bruce", last: "Willis"}},
+    ]});
     return $.getJSON('https://randomuser.me/api?results='+(number||1))
     .promise();
   }
@@ -258,6 +314,9 @@ var game = (() => {
       if(coinFlip){ prependUserName = '' }
       let messages = Object.values(rM.messages)[coinFlip];
       return chosenMessage = prependUserName + messages[Math.floor(Math.random() * messages.length)];
+    }).catch(e => {
+      let messages = ['wow','cool','ok','wtf','omg','lol','rofl','idk','idc','stfu','stfd','lmao','roflmao','dude...','duh','haha','hahhaha','ha!','da fuq?'];
+      return messages[Math.floor(Math.random() * messages.length)];
     })
   }
   return myself;

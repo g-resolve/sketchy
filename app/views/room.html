@@ -1,12 +1,24 @@
+<template id="announce-template">
+  <div id="announce">
+    <div id="announce-round">
+      <span id="announce-round-text">Round</span>
+      <span id="announce-round-number">1</span>
+    </div>
+    <div id="announce-countdown">
+      <span id="announce-countdown-text">starts in</span>
+      <span id="announce-countdown-number">5</span>
+    </div>
+  </div>
+</template>
 <div id="word"></div>
 <div id="canvas">
   <canvas></canvas>
   <img src="/images/pencil.png" draggable="false" id="pencil">
 </div> 
 <div id="players"></div>
-<div id="activity">
+<div id="activity" draggable="false">
   <div id="knob"></div>
-  <div id="messages"></div>
+  <div id="messages" draggable="false"></div>
   <form id="messagebox">
     <input name="guess-text" type="text"/>
     <button name="guess-button">Guess</button>
