@@ -252,7 +252,7 @@ class ROUTER{
           },
           '/room/:rid': {
             init(args){
-              return {game: {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)}};
+              return {room: {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)}};
             },
             view: 'room'
           },
@@ -386,7 +386,15 @@ class ROUTER{
     getTemplate(name){
         return $.ajax({url:`/views/${name}.html`, xhrFields: {withCredentials: true}, type: 'GET'}).promise().then(t => {
             let ss = [$(`link[for=${name}]`),$(`<link rel="stylesheet" href="/css/${name}.css" for="${name}">`)].find(ss => ss.length)
-            return new Promise(res => ss.appendTo(document.head).on('load', res.bind(null, $(`<section class="wrapper ${name}">`).prop('name',name).html(t))));
+            let jsPromise = new Promise(res => {
+              $.getScript(`/scripts/${name}.js`).done(res)
+              .catch(res.bind(null,false))
+            });
+            //let js = [$(`script[for=${name}]`),$(`<script async src="/scripts/${name}.js" for="${name}">`)].find(js => js.length)
+            let ssPromise = new Promise(res => ss.appendTo(document.head).on('load', res));
+            //let jsPromise = new Promise(res => js.appendTo(document.head).on('load', res));
+            return Promise.all([ssPromise,jsPromise])
+              .then(() => $(`<section class="wrapper ${name}">`).prop('name',name).html(t))
         });
     }
     traverse(path, pathObj){

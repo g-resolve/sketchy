@@ -32,12 +32,12 @@ function getAsync(){
     return p; 
 }
 $.fn.removeAll = function(){
-    $(`link[for='${this.prop('name')}']`).add(this).remove();
+    $(`[for='${this.prop('name')}']`).add(this).remove();
 }
 $.fn.cleanup = function(){
     this.children()
         .toArray()
-        .forEach(c => $(`link[for='${c.name}']`).add(c).remove());
+        .forEach(c => $(`[for='${c.name}']`).add(c).remove());
     
     return this;
 }

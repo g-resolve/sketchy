@@ -36,11 +36,18 @@ app.set('views', paths.views);
 
 app.use((req,res,next) => {
   if(path.extname(req.path)){
+    let ext = path.extname(req.path).slice(1);
+    let audio = /mp3|wav/i.test(ext);
+    let content = (() => {
+      let content = 'text/'+ext;
+      if(audio) content = 'arraybuffer'
+      return content;
+    })()
     return fs.exists(appPath + req.path, (e) => {
       if(!e){
         res.status(404).end("Not Found");
       }else{
-        res.writeHead(200, {'Content-Type': 'text/' + path.extname(req.path).slice(1)});
+        res.writeHead(200, {'Content-Type': content });
         if(PROD && !/jquery/.test(path.basename(req.path)) && (path.extname(req.path) == '.js')){
           let {dir, name, ext} = path.parse(req.path);
           let newPath = appPath + dir + '/' + name + '.min' + ext;

@@ -13,6 +13,7 @@ var game = (() => {
       canvasWrapper = false,
       activity = false,
       messageKnob = false,
+      audio = {play: () => {}, buffers: []},
       content = $("#content"),
       overlay = $("#overlay"),
       randomMessages = $.getJSON('https://api.whatdoestrumpthink.com/api/v1/quotes').promise(),
@@ -25,10 +26,12 @@ var game = (() => {
     players: {get: () => players}, 
     pencil: {get: () => pencil}, 
     ctx: {get: () => ctx},
-    drawing: {get: () => drawing}
+    drawing: {get: () => drawing},
+    audio: {get: () => audio}
   });
   myself.bootstrap = function(params = {}){
-    params.game && params.game.start().then(() => {
+
+    params.room && params.room.start().then(() => {
       S.subscribe(self, 'end', e => {
         R.go('/');
         console.log('GAME OVER', e.detail);    
@@ -52,13 +55,22 @@ var game = (() => {
       playerWrapper = document.querySelector('#players');
       messageKnob.addEventListener('mousedown', startDragKnob);
       canvasWrapper.addEventListener('mousedown', redraw);
+      canvasWrapper.addEventListener('mouseup', stopdraw);
+      var mc = new Hammer.Manager(wrapper, {recognizers: [[Hammer.Pan]]});
+      mc.on('pan',e => {
+        let vel = Math.abs(e.velocity);
+        ctx.sound && ctx.sound.volume(vel/10); 
+        ctx.sound && ctx.sound.speed(0.5 + (vel/100)); 
+        clearTimeout(ctx.silence);
+        ctx.silence = setTimeout(() => ctx.sound && ctx.sound.volume(0),100);
+      })
       canvasWrapper.addEventListener('contextmenu', e=>e.preventDefault());
       window.addEventListener('mousemove', handleMouseMove);
       ctx = canvas.getContext('2d');
-
+      
       $("#messagebox").on('submit', sendGuess);
       resetBounds();
-
+      initAudio();
       //Fake Stuff
       injectPlayers().then(artificialActivities);
     });
@@ -134,7 +146,7 @@ var game = (() => {
       setTimeout(() => clearInterval(interval), timeRemaining);
     }, trimTime);
     function tick(){
-      console.log('Tick');
+      //console.log('Tick');
     }
   }
   function startNewRound(round){
@@ -191,7 +203,6 @@ var game = (() => {
     wrapper.removeEventListener('mouseup', stopDragKnob);
     delete wrapper.dragStart;
     resetBounds();
-    
   }
   function resetBounds(){
     canvasWrapper.bounds = canvasWrapper.getBoundingClientRect();
@@ -243,7 +254,11 @@ var game = (() => {
     currX -= canvas.bounds.left;
     currY -= canvas.bounds.top;
     //console.log(canvas.bounds.top,currY);
-    if(!buttons) return (delete ctx.lastX) + (delete ctx.lastY);
+    if(!buttons){
+      stopdraw();
+      return (delete ctx.lastX) + (delete ctx.lastY);
+    }
+    ctx.sound = ctx.sound || game.audio.play(0);
     ctx.strokeStyle = '#333';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 5;
@@ -252,7 +267,13 @@ var game = (() => {
     ctx.lineTo(ctx.lastX = currX, ctx.lastY = currY);
     ctx.closePath();
     ctx.stroke();
-        console.log(currX,currY,canvas.bounds);
+        //console.log(currX,currY,canvas.bounds);
+  }
+  function stopdraw(){
+    if(ctx.sound){
+      ctx.sound.stop();
+      delete ctx.sound;
+    }
   }
   function handleSocketOpen({target:api}){
     send({handshake: {guid:myGUID}})
@@ -318,6 +339,71 @@ var game = (() => {
       let messages = ['wow','cool','ok','wtf','omg','lol','rofl','idk','idc','stfu','stfd','lmao','roflmao','dude...','duh','haha','hahhaha','ha!','da fuq?'];
       return messages[Math.floor(Math.random() * messages.length)];
     })
+  }
+  function initAudio(){
+    var actx = actx || new AudioContext();
+    audio.threads = [];
+    audio.play = (buffer, controller) => {
+        if(buffer === undefined) return false;
+        controller = controller || {loop: true, index:undefined, src: {}};
+        if(typeof buffer == "number") buffer = audio.buffers[buffer];
+        let src = actx.createBufferSource();
+        //let srcOsc = actx.createOscillator();
+        let srcGain = actx.createGain();
+        //srcOsc.frequency.setValueAtTime(1, actx.currentTime);
+        srcGain.gain.setValueAtTime(0, actx.currentTime);
+        src.buffer = buffer;
+        src.loop = controller.loop;
+        src.loopStart = 0.5;
+        src.loopEnd = 1.2;
+        src.connect(srcGain);
+        srcGain.connect(actx.destination);
+        //src.connect(actx.destination);
+        src.start(0);
+        if(controller.index === undefined){
+          controller.index = audio.threads.push(src);
+        }else{
+          audio.threads[controller.index] = src;
+        }
+        src.onended = () => {
+            src.buffer = null;
+            src.disconnect();
+        };
+        controller.volume = (v) => {
+          srcGain.gain.setValueAtTime(v, actx.currentTime);
+        }
+        controller.speed = (v) => {
+          src.playbackRate.setValueAtTime(v, actx.currentTime);
+        }
+        controller.src = src;
+        controller.stop = controller.stop || (() => {
+          controller.loop = false;
+          controller.src.stop();
+        })
+        return controller;
+    }
+    audio.stop = () => {
+      audio.threads.forEach(t => {
+        t.stop;
+        t.buffer = null;
+      });
+      audio.threads = [];
+    }
+    let audioBuffers = ['Draw-02','Win-01','Win-02','Win-03','Win-04','Win-05','Win-06','Win-07'].map(b => {
+        return new Promise(res => {
+            var req = new XMLHttpRequest();
+            req.open('GET','/audio/'+b+'.mp3');
+            req.responseType = 'arraybuffer';
+            req.onload = () => {
+                actx.decodeAudioData(req.response).then(res)
+            }
+            req.send();
+        })
+    })
+    return Promise.all(audioBuffers).then(b => {
+        audio.buffers = audioBuffers.map((_b,i) => b[i]);
+    })
+
   }
   return myself;
 })();
