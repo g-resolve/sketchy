@@ -58,9 +58,12 @@ var game = (() => {
       canvasWrapper.addEventListener('mouseup', stopdraw);
       var mc = new Hammer.Manager(wrapper, {recognizers: [[Hammer.Pan]]});
       mc.on('pan',e => {
-        let vel = Math.abs(e.velocity);
+        let vel = Math.sqrt(Math.abs(e.velocity));
+        if(isNaN(vel)){
+          debugger;
+        }
         ctx.sound && ctx.sound.volume(vel/10); 
-        ctx.sound && ctx.sound.speed(0.5 + (vel/100)); 
+        ctx.sound && ctx.sound.speed(0.40 + vel/100); 
         clearTimeout(ctx.silence);
         ctx.silence = setTimeout(() => ctx.sound && ctx.sound.volume(0),100);
       })
@@ -407,4 +410,3 @@ var game = (() => {
   }
   return myself;
 })();
-R.init();

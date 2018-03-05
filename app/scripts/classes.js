@@ -120,7 +120,7 @@ class Socket{
     let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + path);
     ws.addEventListener('open',(e) => {
       promise.then(this);
-      this.startKeepAlive();
+      //this.startKeepAlive();
       this.onopen(e);
     });
     ws.addEventListener('close',this.onclose.bind(this));
@@ -278,7 +278,8 @@ class ROUTER{
             this.params.user = data;
             Object.assign(ME, data);
             return this.solveEntryPoint(this.params);
-        }, () => {debugger});
+        }, () => {debugger})
+        .catch(e => {debugger});
     }
     rejectAuth(){
         return this.show('/').then(() => this.show('login', {overlay: true}));
@@ -302,7 +303,7 @@ class ROUTER{
           .then(overlay)
           .then(templateFill)
           .then(templateActions)
-          .then(game.bootstrap);
+          .then(chain => game.bootstrap(chain))
     }
     close(path){
       $('.'+path).removeAll();
@@ -387,6 +388,7 @@ class ROUTER{
         return $.ajax({url:`/views/${name}.html`, xhrFields: {withCredentials: true}, type: 'GET'}).promise().then(t => {
             let ss = [$(`link[for=${name}]`),$(`<link rel="stylesheet" href="/css/${name}.css" for="${name}">`)].find(ss => ss.length)
             let jsPromise = new Promise(res => {
+              if(/main/i.test(name)) return res(true);
               $.getScript(`/scripts/${name}.js`).done(res)
               .catch(res.bind(null,false))
             });
@@ -409,3 +411,5 @@ const P = new PRIVATE();
 const M = new Messenger();
 const S = new Socket();
 const ME = new Player();
+
+R.init();

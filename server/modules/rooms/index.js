@@ -2,7 +2,7 @@ const {WordSmith} = require('../words');
 const {PRIVATE:P, Coordinator, guid, safeObject} = require('../utils');
 const {Player} = require('../player');
 const fs = require('fs');
-const KICK_TIME = 10000;
+const KICK_TIME = 1000000;
 const STATES = {
   AWAITING_PLAYERS: 0,
   GAME_START_COUNTDOWN: 1,

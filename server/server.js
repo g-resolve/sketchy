@@ -209,7 +209,7 @@ DB.loadDatabase({}, e => {
     //wsConn.send(JSON.stringify({guid: wsConn.guid}));
   }));
   ws.onerror = () => console.log('onerror', 'Socket disconnect/error');
-  ws.on('error', () => console.log('Socket disconnected/error'));
+  ws.on('error', e => console.log('Socket disconnected/error',e));
   ws.joinRoom = (messge, guid) => new Promise(resolve => {
     //Coordinator.rooms
   })
