@@ -29,64 +29,37 @@ var game = (() => {
     drawing: {get: () => drawing},
     audio: {get: () => audio}
   });
-  myself.bootstrap = function(params = {}){
-
-    params.room && params.room.start().then(() => {
-      S.subscribe(self, 'end', e => {
-        R.go('/');
-        console.log('GAME OVER', e.detail);    
-      });
-      S.subscribe(self, 'start', e => {
-        console.log('START GAME', e.detail);
-      });
-      S.subscribe(self, 'voteRestart', e => voteRestart(e.detail));
-      S.subscribe(self, 'newRound', e => startNewRound(e.detail));
-      S.subscribe(self, 'endRound', e => endRound(e.detail));
-      S.subscribe(self, 'reveal', e => updateWord(e.detail));
-      S.subscribe(self, 'nextRoundCountdown', e => countdownTick(e.detail));
-      S.subscribe(self, 'startCountdown', e => countdownTick(e.detail));
-      S.subscribe(self, 'room', e => updateRound(e.detail));
-      wrapper = document.querySelector('.room.wrapper');
-      canvasWrapper = document.querySelector('#canvas');
-      canvas = document.querySelector('canvas');
-      pencil = document.querySelector('#pencil');
-      messageKnob = document.querySelector("#knob");
-      activity = $("#activity");
-      playerWrapper = document.querySelector('#players');
-      messageKnob.addEventListener('mousedown', startDragKnob);
-      canvasWrapper.addEventListener('mousedown', redraw);
-      canvasWrapper.addEventListener('mouseup', stopdraw);
-      var mc = new Hammer.Manager(wrapper, {recognizers: [[Hammer.Pan]]});
-      mc.on('pan',e => {
-        let vel = Math.sqrt(Math.abs(e.velocity));
-        if(isNaN(vel)){
-          debugger;
+  myself.bootstrap = () => {
+    initAudio().then(() => R.addRoutes({
+      '/': {
+        view: 'main',
+        init(args){
+          S.go('rooms').then(startEngine);
+          //return {params: args.vars, start: () => S.go('rooms')}
         }
-        ctx.sound && ctx.sound.volume(vel/10); 
-        ctx.sound && ctx.sound.speed(0.40 + vel/100); 
-        clearTimeout(ctx.silence);
-        ctx.silence = setTimeout(() => ctx.sound && ctx.sound.volume(0),100);
-      })
-      canvasWrapper.addEventListener('contextmenu', e=>e.preventDefault());
-      window.addEventListener('mousemove', handleMouseMove);
-      ctx = canvas.getContext('2d');
-      
-      $("#messagebox").on('submit', sendGuess);
-      resetBounds();
-      initAudio();
-      //Fake Stuff
-      injectPlayers().then(artificialActivities);
-    });
-    params.lobby && params.lobby.start().then(() => {
-      S.subscribe(Q('#rooms'), 'rooms', ({target:el,detail:rooms}) => {
-        rooms = rooms.map(room => 
-          $(`<room>`).append(() => Object.keys(room).map(k => 
-            $(`<${k} value="${room[k]}">`).html(room[k])))
-          .on('click',R.go.bind(R, '/room/' + room.id)));
-        $("#rooms").append(rooms); 
-      })
+      },
+      '/room/:rid': {
+        view: 'room',
+        init(args){
+          S.go('room/' + args.vars.rid)
+            .then(S.subscribe.bind(S, Q('#rooms'), 'rooms', populateRooms))
 
-    })
+          //return {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)};
+        }
+      }
+    }))
+    .then(R.go);
+  }
+//   myself.bootstrap = function(params = {}){
+//     initAudio()
+//     .then(params.start)
+//     .then(started => {
+
+//     });
+
+
+
+
     //listRooms();
     /*
     wrapper = document.querySelector('#wrapper');
@@ -106,7 +79,7 @@ var game = (() => {
     resetBounds();
     windowEvents();
     */
-  };
+//   };
 
 //   myself.empty = () => Router.clearTemplates() && myself;
 //   myself.show = (template, options={}) => (parent = options.overlay?overlay.cleanup():content) && Router.getTemplate(template).then(t => t.appendTo(parent)).then(t => {
@@ -123,6 +96,59 @@ var game = (() => {
 //   myself.showlogin = () => Router.getTemplate('login').then(html => {
 //     $('<section>').html(html).appendTo(content);
 //   })
+  function startEngine(){
+    S.subscribe(self, 'end', e => {
+      R.go('/');
+      console.log('GAME OVER', e.detail);    
+    });
+    S.subscribe(self, 'start', e => {
+      console.log('START GAME', e.detail);
+    });
+    S.subscribe(self, 'voteRestart', e => voteRestart(e.detail));
+    S.subscribe(self, 'newRound', e => startNewRound(e.detail));
+    S.subscribe(self, 'endRound', e => endRound(e.detail));
+    S.subscribe(self, 'reveal', e => updateWord(e.detail));
+    S.subscribe(self, 'nextRoundCountdown', e => countdownTick(e.detail));
+    S.subscribe(self, 'startCountdown', e => countdownTick(e.detail));
+    S.subscribe(self, 'room', e => updateRound(e.detail));
+    wrapper = document.querySelector('.room.wrapper');
+    canvasWrapper = document.querySelector('#canvas');
+    canvas = document.querySelector('canvas');
+    pencil = document.querySelector('#pencil');
+    messageKnob = document.querySelector("#knob");
+    activity = $("#activity");
+    playerWrapper = document.querySelector('#players');
+    messageKnob.addEventListener('mousedown', startDragKnob);
+    canvasWrapper.addEventListener('mousedown', redraw);
+    canvasWrapper.addEventListener('mouseup', stopdraw);
+    var mc = new Hammer.Manager(wrapper, {recognizers: [[Hammer.Pan]]});
+    mc.on('pan',e => {
+      let vel = Math.sqrt(Math.abs(e.velocity));
+      if(isNaN(vel)){
+        debugger;
+      }
+      ctx.sound && ctx.sound.volume(vel/10); 
+      ctx.sound && ctx.sound.speed(0.80 + vel/100); 
+      clearTimeout(ctx.silence);
+      ctx.silence = setTimeout(() => ctx.sound && ctx.sound.volume(0),100);
+    })
+    canvasWrapper.addEventListener('contextmenu', e=>e.preventDefault());
+    window.addEventListener('mousemove', handleMouseMove);
+    ctx = canvas.getContext('2d');
+
+    $("#messagebox").on('submit', sendGuess);
+    resetBounds();
+
+    //Fake Stuff
+    injectPlayers().then(artificialActivities);
+  }
+  function populateRooms({target:el,detail:rooms}){
+    rooms = rooms.map(room => 
+      $(`<room>`).append(() => Object.keys(room).map(k => 
+        $(`<${k} value="${room[k]}">`).html(room[k])))
+      .on('click',R.go.bind(R, '/room/' + room.id)));
+    $("#rooms").append(rooms); 
+  }
   function voteRestart(){
     R.show('vote-restart', {overlay: true}).then(template => {
       let inputs  = $('input', template);
@@ -142,6 +168,13 @@ var game = (() => {
     guessedWord = false;
     let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
     wrapper.append(document.importNode(announcement, true));
+    setTimeout(() => {
+      game.audio.play(game.audio.effects.Bell[1]);
+      setTimeout(() => game.audio.play(game.audio.effects.Bell[1]), 250);
+    }, 350);
+
+    //setTimeout(() => game.audio.play(game.audio.effects.Boom[Math.round(Math.random())]), 400);
+    //setTimeout(() => game.audio.play(game.audio.effects.Boom[Math.round(Math.random())]), 1400);
     let trimTime = time % 1000;
     let timeRemaining = time - trimTime;
     setTimeout(() => {
@@ -261,7 +294,7 @@ var game = (() => {
       stopdraw();
       return (delete ctx.lastX) + (delete ctx.lastY);
     }
-    ctx.sound = ctx.sound || game.audio.play(0);
+    ctx.sound = ctx.sound || game.audio.play(game.audio.effects.Draw[0], {loop: [0.5,1.2], volume: 0});
     ctx.strokeStyle = '#333';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 5;
@@ -345,29 +378,24 @@ var game = (() => {
   }
   function initAudio(){
     var actx = actx || new AudioContext();
-    audio.threads = [];
     audio.play = (buffer, controller) => {
         if(buffer === undefined) return false;
-        controller = controller || {loop: true, index:undefined, src: {}};
+        let _defaults = {loop: false, volume: 1, src: {}};
+        controller = controller && Object.assign({}, _defaults, controller) || _defaults;
         if(typeof buffer == "number") buffer = audio.buffers[buffer];
         let src = actx.createBufferSource();
         //let srcOsc = actx.createOscillator();
         let srcGain = actx.createGain();
         //srcOsc.frequency.setValueAtTime(1, actx.currentTime);
-        srcGain.gain.setValueAtTime(0, actx.currentTime);
+        srcGain.gain.setValueAtTime(controller.volume, actx.currentTime);
         src.buffer = buffer;
-        src.loop = controller.loop;
-        src.loopStart = 0.5;
-        src.loopEnd = 1.2;
+        src.loop = !!controller.loop;
+        src.loopStart = controller.loop && controller.loop[0];
+        src.loopEnd = controller.loop && controller.loop[1];
         src.connect(srcGain);
         srcGain.connect(actx.destination);
         //src.connect(actx.destination);
         src.start(0);
-        if(controller.index === undefined){
-          controller.index = audio.threads.push(src);
-        }else{
-          audio.threads[controller.index] = src;
-        }
         src.onended = () => {
             src.buffer = null;
             src.disconnect();
@@ -392,7 +420,8 @@ var game = (() => {
       });
       audio.threads = [];
     }
-    let audioBuffers = ['Draw-02','Win-01','Win-02','Win-03','Win-04','Win-05','Win-06','Win-07'].map(b => {
+    let bufferNames = ['Bell-01','Bell-02','Boom-01','Boom-02','Draw-02','Win-01','Win-02','Win-03','Win-04','Win-05','Win-06','Win-07'];
+    let audioBuffers = bufferNames.map(b => {
         return new Promise(res => {
             var req = new XMLHttpRequest();
             req.open('GET','/audio/'+b+'.mp3');
@@ -404,9 +433,17 @@ var game = (() => {
         })
     })
     return Promise.all(audioBuffers).then(b => {
-        audio.buffers = audioBuffers.map((_b,i) => b[i]);
+        audio.effects = {};
+        audio.buffers = audioBuffers.map((_b,i) => {
+          let nameParts = bufferNames[i].split('-');
+          let name = nameParts[0];
+          let number = parseInt(nameParts[1]);
+          audio.effects[name] = (audio.effects[name]||[]).concat(b[i]);
+          return b[i]
+        });
     })
 
   }
   return myself;
 })();
+game.bootstrap();

@@ -261,26 +261,74 @@ player message{
   position: absolute;
   width: 300px;
   height: 200px;
-/*   background: #00F; */
+  background: linear-gradient(#FFF, #EEE);
   top: 30%;
   left: 50%;
-  transform: translate(-50%, -30%);
+  transform: translate(-50%, -50%);
+  padding: 10px;
+  border-radius: 10px;
+  border: 5px solid #CCC;
+  box-shadow: 0px 10px 50px #000;
+  animation: popin 1s ease-in 0s 1 both;
+  transform-origin: 0% 10%;
+}
+#announce-countdown{
+  text-align: center;
+  margin-top: 20px;
 }
 #announce-round{
-  font-size: 50px;
+  font-size: 40px;
+  vertical-align: middle;
+  text-align:  center;
+  
 }
 #announce-round-text{
-  animation: slam 1s ease-in 0s forwards;
+  animation: slam 1s ease-in 0.4s forwards;
   display: inline-block;
 }
 #announce-round-number{
   font-size: 80px;
   position: relative;
   z-index: 1;
-  animation: slam 1s cubic-bezier(0.6, -0.28, 0.74, 0.05) 1s 1 normal forwards;
+  min-width: 100px;
+  padding: 0px 10px;
+  border: 5px solid #FFF;
+  border-radius: 10px;
+  color: #FFF;
+  background: #FF5722;
+  animation: slam 1s cubic-bezier(0.6, -0.28, 0.74, 0.05) .8s 1 normal forwards;
   transform: scale(6);
   opacity: 0;
+  vertical-align: middle;
   display: inline-block;
+}
+@keyframes popin{
+  0% {
+    transform: scale(0) translate(-50%, -50%);
+    opacity: 0;
+  }
+  5%{
+    opacity: 1;
+  }
+  20% {
+    transform: scale(1.5) translate(-50%, -50%);
+  }
+  40% {
+    transform: scale(0.9) translate(-50%, -50%);
+  }
+  50% {
+    transform: scale(1.2) translate(-50%, -50%);
+  }
+  75% {
+    transform: scale(0.95) translate(-50%, -50%);
+  }
+  90% {
+    transform: scale(1) translate(-50%, -50%);
+  }
+  100% {
+    transform: scale(1) translate(-50%, -50%);
+    opacity: 1;
+  }
 }
 @keyframes slam{
   0% {

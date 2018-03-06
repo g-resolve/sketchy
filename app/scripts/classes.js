@@ -217,16 +217,16 @@ class ROUTER{
         this.params.baseURL = this.base;
         this.params.path = this.path;
         this.addRoutes({
-          '/': {
-            view: 'main',
-            init(args){
-              return {lobby: {params: args.vars, start: () => S.go('rooms')}}
-            }
-          },
+//           '/': {
+//             view: 'main',
+//             init(args){
+//               return {params: args.vars, start: () => S.go('rooms')}
+//             }
+//           },
           '/login': {
             init(){
               let dismiss = e => {
-                $("#overlay").cleanup();
+                $("#overlay").cleanup();1
                 window.removeEventListener('keydown', dismiss);
               };
               window.addEventListener('keydown', dismiss)
@@ -250,12 +250,12 @@ class ROUTER{
             },
             view: 'vote-restart'
           },
-          '/room/:rid': {
-            init(args){
-              return {room: {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)}};
-            },
-            view: 'room'
-          },
+//           '/room/:rid': {
+//             init(args){
+//               return {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)};
+//             },
+//             view: 'room'
+//           },
           '/account/overview': {
             init(){
               console.log("ACCOUNT/OVERVIEW");
@@ -277,7 +277,7 @@ class ROUTER{
         return $.get('/api/user').promise().then(data => {
             this.params.user = data;
             Object.assign(ME, data);
-            return this.solveEntryPoint(this.params);
+            //return this.solveEntryPoint(this.params);
         }, () => {debugger})
         .catch(e => {debugger});
     }
@@ -302,8 +302,8 @@ class ROUTER{
         return path()
           .then(overlay)
           .then(templateFill)
-          .then(templateActions)
-          .then(chain => game.bootstrap(chain))
+          .then(templateActions);
+          //.then(chain => game.bootstrap(chain))
     }
     close(path){
       $('.'+path).removeAll();
