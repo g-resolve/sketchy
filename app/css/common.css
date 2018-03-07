@@ -74,6 +74,7 @@ h1 #fps{
   height: 100vh;
   background: none;
   z-index: 1;
+  /* display: none; */
 }
 #overlay:empty{display: none;}
 #overlay:not(:empty) ~ *{

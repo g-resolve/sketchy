@@ -6,7 +6,7 @@ class Player{
     let defaultConfig = {
       id: guid(),
       name: 'Anonymous',
-      email: false,
+      emails: [],
       currentRoom: undefined,
       level: 0,
       gamesPlayed: 0,
@@ -25,7 +25,7 @@ class Player{
     config = config || {};
     delete config.$loki;
     delete config.meta;
-    config.email = config.email || config.emails && config.emails[0].value;
+    config.email = config.email || config.emails && config.emails[0] && config.emails[0].value;
     config = (() => {
       let player;
       if(config.email){
@@ -46,6 +46,19 @@ class Player{
   }
   joinRoom(rid){
    
+  }
+  get clean(){
+    let name = ((n, e) => {
+      let altName = e && e.value && e.value.split('@')[0];
+      if(typeof n == 'string') return n;
+      else if(n.familyName) return n.familyName;
+      else if(altName) return altName;
+      else return 'MISSINGNO';
+    })(this.name, this.emails[0])
+    return {
+      name,
+      id: this.id,
+    }
   }
   get currentRoom(){
     return P(this).currentRoom;

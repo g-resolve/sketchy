@@ -116,7 +116,7 @@ class Socket{
     if(!path){ return false }
     if(!/^\//.test(path)){ path = '/' + path }
     let oldSocket = P(this).ws;
-    if(oldSocket){ oldSocket.close(1000) }
+    if(oldSocket){ oldSocket.close(1000); delete P(this).ws;  }
     let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + path);
     ws.addEventListener('open',(e) => {
       promise.then(this);
@@ -162,6 +162,7 @@ class Socket{
     if(existing) return true;
     subs[method] = [].concat.apply(subscriptions||[], [{el,callback}]);
     el.addEventListener(method, callback);
+    return true;
   }
   onmessage({data:message}){
     if(!/^[\[|\{]/.test(message)) return console.warn("Invalid message received");
@@ -217,31 +218,13 @@ class ROUTER{
         this.params.baseURL = this.base;
         this.params.path = this.path;
         this.addRoutes({
-//           '/': {
-//             view: 'main',
-//             init(args){
-//               return {params: args.vars, start: () => S.go('rooms')}
-//             }
-//           },
+          '/': {
+            view: 'main',
+            init(args){
+              return {params: args.vars, start: () => S.go('rooms')}
+            }
+          },
           '/login': {
-            init(){
-              let dismiss = e => {
-                $("#overlay").cleanup();1
-                window.removeEventListener('keydown', dismiss);
-              };
-              window.addEventListener('keydown', dismiss)
-              $('buttons button').on('click', e => {
-                $("#login h3").html('Got it!');
-                if(e.target.id == 'llogin'){
-                  $("#overlay").cleanup();
-                  return e.preventDefault();
-                }
-                $('buttons').html(`<p>We\'ll log you in using ${e.target.innerHTML}... one moment.</p>`)
-                setTimeout(() => window.location.href = "/api/" + e.target.id, 500);
-                e.preventDefault();
-              });
-              return {login: true};
-            },
             view: 'login'
           },
           '/vote-restart':{
@@ -250,12 +233,12 @@ class ROUTER{
             },
             view: 'vote-restart'
           },
-//           '/room/:rid': {
-//             init(args){
-//               return {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)};
-//             },
-//             view: 'room'
-//           },
+          '/room/:rid': {
+            init(args){
+              return {id: args.vars.rid, start: () => S.go('room/' + args.vars.rid)};
+            },
+            view: 'room'
+          },
           '/account/overview': {
             init(){
               console.log("ACCOUNT/OVERVIEW");
@@ -277,7 +260,7 @@ class ROUTER{
         return $.get('/api/user').promise().then(data => {
             this.params.user = data;
             Object.assign(ME, data);
-            //return this.solveEntryPoint(this.params);
+            return this.solveEntryPoint(this.params);
         }, () => {debugger})
         .catch(e => {debugger});
     }
@@ -290,7 +273,7 @@ class ROUTER{
     }
     solveEntryPoint(params = {}){
         if(!this.params.user.emails && !this.params.user.email){
-          this.params.o = params.o || '/login';
+          //this.params.o = params.o || '/login';
         }else{
           document.body.setAttribute('authorized','');
         }
@@ -310,15 +293,19 @@ class ROUTER{
     }
     show(path, options={}, chain){
         if(!path) return Promise.resolve(false);
+        //if(path == 'vote-restart'){ debugger }
         if(options && options.target) options = {};
         let reqPath = path;
         path = this.findPath(path);
-        let argsToPass =  Object.assign({},this.params,{vars: path.vars});
         if(!path) return Promise.resolve(false);
+        
+        let argsToPass =  Object.assign({},this.params,{vars: path.vars});
         let parent = options.overlay?self.overlay.cleanup():self.content;
         return this.getTemplate(path.view).then(t => t.appendTo(parent)).then(t => {
             if(!options || !options.overlay) self.content.attr('class','p' + self.content.children().toArray().indexOf(t.get(0)));
-            let init = path.init.call(null, argsToPass, t);
+            let _module_ = Object.assign({bootstrap: () => t}, self[path.view]||{});
+            let init = (_module_.init || _module_.bootstrap).call(_module_, argsToPass, t);
+            //let init = path.init.call(null, argsToPass, t);
             if(!(init instanceof Promise)){ init = Promise.resolve(init) }
             if(options.overlay){
               window.history.pushState(Object.assign({overlay: reqPath}, this.params, options), path.title, (this.currentPath||reqPath) + '?o=' + encodeURIComponent(reqPath));   
@@ -344,14 +331,17 @@ class ROUTER{
           .map(c => $(`<span class="${c.key}">${c.value}</span>`))
         children.length && $(s).empty().append(children);
       });
+      this.templateFill = () => {};
       return chain;
     }
     templateActions(chain){
       window.addEventListener('onbeforeunload',e => {
 
       })
-      $('h1').on('click', R.go.bind(R, '/'));
+      $('h1').on('click', R.go.bind(R, '/', false));
       $('[logout]').on('click', () => window.location.href='/api/logout');
+      this.templateActions = () => {};
+
       return chain;
     }
     go(path,o){
@@ -385,10 +375,16 @@ class ROUTER{
         return $('.wrapper,link[for]').remove();
     }
     getTemplate(name){
-        return $.ajax({url:`/views/${name}.html`, xhrFields: {withCredentials: true}, type: 'GET'}).promise().then(t => {
+        let promise, existing = $(`.wrapper.${name}`);
+        if(existing.length){
+          return Promise.resolve(existing);
+        }else{
+          promise = $.ajax({url:`/views/${name}.html`, xhrFields: {withCredentials: true}, type: 'GET'}).promise();
+        }
+        return promise.then(t => {
             let ss = [$(`link[for=${name}]`),$(`<link rel="stylesheet" href="/css/${name}.css" for="${name}">`)].find(ss => ss.length)
             let jsPromise = new Promise(res => {
-              if(/main/i.test(name)) return res(true);
+              if(self[name] && (self[name].bootstrap || self[name].bootstrap)) return res(true);
               $.getScript(`/scripts/${name}.js`).done(res)
               .catch(res.bind(null,false))
             });

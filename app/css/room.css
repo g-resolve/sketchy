@@ -262,15 +262,15 @@ player message{
   width: 300px;
   height: 200px;
   background: linear-gradient(#FFF, #EEE);
-  top: 30%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 20%;
+  left: 30%;
   padding: 10px;
   border-radius: 10px;
   border: 5px solid #CCC;
   box-shadow: 0px 10px 50px #000;
-  animation: popin 1s ease-in 0s 1 both;
-  transform-origin: 0% 10%;
+  backface-visibility: hidden;
+  animation: pop 6s ease-in-out 0s 1 forwards;
+  transform-origin: 50% 10%;
 }
 #announce-countdown{
   text-align: center;
@@ -283,7 +283,7 @@ player message{
   
 }
 #announce-round-text{
-  animation: slam 1s ease-in 0.4s forwards;
+/*   animation: slam 1s ease-in 0.4s forwards; */
   display: inline-block;
 }
 #announce-round-number{
@@ -296,37 +296,72 @@ player message{
   border-radius: 10px;
   color: #FFF;
   background: #FF5722;
-  animation: slam 1s cubic-bezier(0.6, -0.28, 0.74, 0.05) .8s 1 normal forwards;
-  transform: scale(6);
-  opacity: 0;
+  backface-visibility: hidden;
+  animation: ring 1s cubic-bezier(0.6, -0.28, 0.74, 0.05) 0s 1 forwards;
+  transform: scale(0) translate3d(0,0,0);
+  opacity: 1;
   vertical-align: middle;
   display: inline-block;
 }
-@keyframes popin{
+@keyframes pop{
   0% {
-    transform: scale(0) translate(-50%, -50%);
+    transform: scale(0);
     opacity: 0;
   }
-  5%{
+  1%{
+    transform: scale(0);
     opacity: 1;
   }
+  5% {
+    transform: scale(1.5);
+  }
+  10% {
+    transform: scale(0.9);
+  }
+  15% {
+    transform: scale(1.1);
+  }
   20% {
-    transform: scale(1.5) translate(-50%, -50%);
+    transform: scale(0.95);
   }
-  40% {
-    transform: scale(0.9) translate(-50%, -50%);
+  25% {
+    transform: scale(1);
   }
-  50% {
-    transform: scale(1.2) translate(-50%, -50%);
+  30% {
+    transform: scale(1);
+    opacity: 1;
   }
-  75% {
-    transform: scale(0.95) translate(-50%, -50%);
+  92% {
+    transform: scale(1);
   }
-  90% {
-    transform: scale(1) translate(-50%, -50%);
+  98% {
+    transform: scale(1.1);
   }
   100% {
-    transform: scale(1) translate(-50%, -50%);
+    transform: scale(0);
+  }
+}
+@keyframes ring{
+  0% {
+    transform: scale(1) translate3d(0,0,0);
+  }
+  20%{
+    transform: scale(1.5) rotate(25deg) translate3d(0,0,0);
+  }
+  30% {
+    transform: scale(0.8) translate3d(0,0,0);
+  }
+  40% {
+    transform: scale(1.2) rotate(-5deg) translate3d(0,0,0);
+  }
+  50% {
+    transform: scale(0.9) translate3d(0,0,0);
+  }
+  60% {
+    transform: scale(1) translate3d(0,0,0);
+  }
+  100% {
+    transform: scale(1);
     opacity: 1;
   }
 }

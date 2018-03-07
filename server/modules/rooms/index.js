@@ -162,7 +162,7 @@ class Room{
     return this.gameState = v;
   }
   get playerList(){
-    return this.players.map(p => p.id);
+    return this.players.map(p => p.clean);
   }
   set playerList(v){}
   get players(){
@@ -337,6 +337,7 @@ class Room{
     if(match){
       return word;
     }else{
+      this.broadcast({message: {from: p.id, value: g}});
       return false;
     }
   }

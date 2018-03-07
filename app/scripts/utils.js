@@ -31,6 +31,9 @@ function getAsync(){
     p.await.success = p.await.done = p.await.then;
     return p; 
 }
+$.ajaxSetup({
+    cache: true
+})
 $.fn.removeAll = function(){
     $(`[for='${this.prop('name')}']`).add(this).remove();
 }

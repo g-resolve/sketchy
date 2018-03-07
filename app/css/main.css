@@ -74,4 +74,5 @@ room > state[value="0"]{
 
 }
 room > state[value="0"]:after{
-  displ
+  display: inline-block;
+}
