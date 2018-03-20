@@ -25,4 +25,5 @@ function safeObject(data){
     }
     return data;
 }
+
 module.exports = {PRIVATE: new PRIVATE(), serialize, guid, safeObject};

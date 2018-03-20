@@ -1,0 +1,141 @@
+.wrapper.wait{
+  background: none;
+}
+#wait{
+  width: 400px;
+  margin: auto;
+  display: block;
+  background: #8BC34A;
+  height: auto;
+  min-height: 200px;
+  border: 5px solid #FFF;
+  border-radius: 20px;
+  position: relative;
+  top: 40%;
+  transform: translateY(-50%);
+}
+#wait time{
+  position: absolute;
+  font-size: 30px;
+  top: -40px;
+  color: #000;
+  width: 100%;
+  text-align: right;
+  margin-right: 10px;
+  display: block;
+  left: 0;
+}
+#wait time:before{
+  content: "Waiting for more players: ";
+  color: rgba(0,0,0,0.5);
+  font-size: 1rem;
+}
+#wait img{
+  height: 25px;
+  vertical-align: middle;
+}
+
+#wait li{
+  list-style: none;
+  /* border-bottom: 1px solid #FFF; */
+  width: auto;
+  display: block;
+  width: 49%;
+  height: 25px;
+  overflow: hidden;
+  background: linear-gradient(#2b2b2b, #171717);
+  margin-bottom: 5px;
+  margin-right: 0px;
+  color: #cecece;
+  /* box-shadow: inset 0px 2px 5px #000; */
+  /* border: 1px solid #666; */
+  font-weight: bold;
+  text-shadow: 1px 1px #000;
+  position: relative;
+  perspective: 200px;
+}
+
+#wait li > div{
+  position: relative;
+  height: 25px;
+  transform-style: preserve-3d;
+  transition: all 0.5s ease-in-out;
+  transform: rotateX(0deg);
+  /* perspective: 55px; */
+  /* animation: swing 1.5s ease-in 0s infinite; */
+}
+#wait li > div:after{
+  display: block;
+  content: '';
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background: rgba(0,0,0,0);
+  top: 0;
+  z-index: 2;
+}
+#wait li > div:empty{
+/*  background: linear-gradient(#8BC34A, #558B2F); */
+}
+#wait li > div:empty:after{
+  box-shadow: inset 0px 0px 2px #000;
+}
+#wait li > div.flipped{
+  transform: rotateX(180deg);
+}
+#wait li > div > span{
+  backface-visibility: hidden;
+  position: absolute;
+  display: block;
+  width: 100%;
+}
+  #wait li > div .front{
+    transform: rotate(0deg);
+    z-index: 2;
+    width: 100%;
+    height: 25px;
+    width: 100%;
+    background: linear-gradient(#8BC34A, #558B2F);
+  }
+  #wait li > div .back{
+    transform: rotateX(180deg);
+    background: linear-gradient(#8c8c8c, #555 90%);
+  }
+  #wait li > div .back:empty{
+    z-index: 1;
+  }
+  #wait li > div .back:empty:after{
+    content: 'Such empty';
+    display: inline-block;
+    padding: 5px;
+  }
+#wait buttons{
+  margin: 10px;
+  display: block;
+}
+
+#waiting_players{
+  margin: 0;
+  display: flex;
+  flex-flow: column wrap;
+  align-content: space-between;
+  height: auto;
+  /* max-width: 100%; */
+  margin: 10px;
+  margin-bottom: 0;
+  /* width: 100%; */
+  overflow: hidden;
+  padding: 0;
+}
+
+@keyframes swing{
+  0%{
+    transform: rotateX(0deg);
+  }
+  50%{
+    transform: rotateX(180deg);
+  }
+  100%{
+    transform: rotateX(360deg);
+  }
+}

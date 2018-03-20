@@ -1,6 +1,6 @@
 
 self.room = (() => {
-  let players = [], 
+  let players = new Map(), 
       myGUID = guid(), 
       pencil = false, 
       canvas = false, 
@@ -24,7 +24,11 @@ self.room = (() => {
   Object.defineProperties(myself, {
     randos: {value: (x) => getRandomUsers(x||Math.floor(Math.random()*10))}, 
     canvas: {get: () => canvas}, 
-    players: {get: () => players}, 
+    players: {get: () => d3.selectAll('player').data().reduce((o,v) => {
+      if(!v.instance) v.instance = P(self).players[v.id];
+      o[v.id]=v;
+      return o
+    },{})}, 
     pencil: {get: () => pencil}, 
     ctx: {get: () => ctx},
     drawing: {get: () => drawing},
@@ -81,10 +85,15 @@ self.room = (() => {
     });
     S.subscribe(self, 'voteRestart', e => voteRestart(e.detail));
     S.subscribe(self, 'newRound', e => startNewRound(e.detail));
+    S.subscribe(self, 'newTurn', e => startNewTurn(e.detail));
     S.subscribe(self, 'endRound', e => endRound(e.detail));
     S.subscribe(self, 'reveal', e => updateWord(e.detail));
+    S.subscribe(self, 'players', e => updatePlayers(e.detail));
     S.subscribe(self, 'nextRoundCountdown', e => countdownTick(e.detail));
-    S.subscribe(self, 'startCountdown', e => countdownTick(e.detail));
+    S.subscribe(self, 'nextTurnCountdown', e => endTurn(e.detail));
+    //S.subscribe(self, 'startCountdown', e => countdownTick(e.detail));
+    S.subscribe(self, 'wait', e => updateWaitScreen(e.detail));
+    S.subscribe(self, 'startCountdown', e => updateWaitScreen(e.detail));
     S.subscribe(self, 'room', e => updateRound(e.detail));
     S.subscribe(self, 'message', e => receiveMessage(e.detail));
 
@@ -117,7 +126,7 @@ self.room = (() => {
     resetBounds();
 
     //Fake Stuff
-    injectPlayers().then(artificialActivities);
+    //injectPlayers().then(artificialActivities);
   }
   function populateRooms({target:el,detail:rooms}){
     rooms = rooms.map(room => 
@@ -139,12 +148,59 @@ self.room = (() => {
       })
     })
   }
+  function updateWaitScreen(data){
+    if(!Q('.wrapper.wait')) return R.show('wait',{overlay:true, params: data});
+    else self.wait.update({vars:data});
+  }
+  function announce(){
+    let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
+    announcement.querySelector('#announce-round-number').dataset.value = room.currentRound;
+    wrapper.append(document.importNode(announcement, true));
+  }
+  function results(room){
+    console.log("Player Stats", room.playerStats);
+    let stats = room.playerStats[room.currentRound];
+    let scribblers = Object.keys(stats);
+        stats = scribblers.length && stats[scribblers.pop()].map(s => Object.assign({}, self.room.players[s.id], s));
+    if(!stats) return false;
+    let results = (() => {
+      let results;
+      if(results = wrapper.querySelector("#results")) return results;
+      results = $("#results-template").prop('content').firstElementChild.cloneNode(true);
+      results = document.importNode(results, true);
+      wrapper.append(results);
+      return results;
+    })();
+    
+    let list = results.querySelector('#results-list');
+    let tbody = list.querySelector('tbody');
+    let columns = d3.select(list).selectAll('thead th').nodes().map(n => n.getAttribute('name'));
+    let statRow = d3
+      .select(tbody)
+      .selectAll('tr')
+      .data(stats, d => d.id);
+
+    let enterStatRow = statRow.enter().append('tr');
+    let exitStatRow = statRow.exit().remove();
+    let statCell = statRow.merge(enterStatRow)
+      .selectAll('td')
+      .data(d => columns.map(c => ({key: c, value: d[c]})), d => JSON.stringify(d.value))
+    statCell.exit().remove();
+    statCell.enter().append('td').html(d => {
+      if(d.key == 'name' || d.key == 'points')
+        return d.value;
+      if(d.key == 'guessed')
+        return d.value ? 'GOT IT!' : 'Good try...';
+      if(d.key == 'notes'){
+        return JSON.stringify(d.value);
+      }
+    })
+    console.log("RESULTS");
+  }
   function countdownTick(room){
     let time = room.timeLeft;
     R.close('vote-restart');
     guessedWord = false;
-    let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
-    wrapper.append(document.importNode(announcement, true));
     setTimeout(() => {
       myself.audio.play(myself.audio.effects.Bell[1]);
       setTimeout(() => myself.audio.play(myself.audio.effects.Bell[1]), 250);
@@ -152,30 +208,45 @@ self.room = (() => {
 
     //setTimeout(() => myself.audio.play(myself.audio.effects.Boom[Math.round(Math.random())]), 400);
     //setTimeout(() => myself.audio.play(myself.audio.effects.Boom[Math.round(Math.random())]), 1400);
-    let trimTime = time % 1000;
-    let timeRemaining = time - trimTime;
-    setTimeout(() => {
-      let interval = setInterval(tick, 1000);
-      setTimeout(() => clearInterval(interval), timeRemaining);
-    }, trimTime);
+    let interval = createCountdown(time, 1000, tick, done);
+
+
+    function done(){
+      //Done!
+    }
     function tick(){
       //console.log('Tick');
     }
   }
+  function startNewTurn(turn){
+    $("#results").remove();
+    $('#overlay').cleanup();
+    guessedWord = false;
+    clearCanvas();
+    updateRound(turn);
+    updateClock(turn)
+  }
   function startNewRound(round){
     $("#announce").remove();
+    $('#overlay').cleanup();
     guessedWord = false;
     clearCanvas();
     updateRound(round);
   }
+  function endTurn(round){
+    results(round.room);
+    updateRound(round);
+  }
   function endRound(round){
+    announce(round.room);
     updateRound(round);
   }
   function updateRound(round){
-    console.log("Round Info", round);
+    //console.log("Round Info", round);
+    round = round && round.room ? round.room : round;
+    updatePlayers(round.playerList);
     if(Array.isArray(round.wordMask)) updateWord(round.wordMask);
     resetBounds();
-
   }
   function updateWord(wordMask){
     let wordEl = $("#word").empty();
@@ -186,6 +257,25 @@ self.room = (() => {
       rooms = rooms.map(room => $(`<room>`).append(() => Object.keys(room).map(k => $(`<${k} value="${room[k]}">`).html(room[k]).on('click',R.show.bind(R, '/room/')))));
       $("#rooms").append(rooms);
     }, error => {console.error(error)})
+  }
+  function updateClock(turn){
+    let c = self.clock;    
+    
+    if(room.drawCountdown) room.drawCountdown.kill();
+   
+    room.drawCountdown = createCountdown(turn.drawTimeLeft, 1000, tick, done);
+    function tick(timeLeft){
+      timeLeft = timeLeft/1000;
+      c.innerHTML = timeLeft;
+      if(timeLeft <= 50){
+        c.classList.value = 'intense';
+      }else{
+        c.classList.value = '';
+      }
+    }
+    function done(){
+      console.log("Done");
+    }
   }
   function sendGuess(e){
     e.preventDefault();
@@ -198,7 +288,11 @@ self.room = (() => {
     e.target['guess-text'].value = '';
   }
   function receiveMessage({from, value:message}){
-    debugger;
+    console.log(from, message);
+    let player = room.players[from];
+    player = player && player.instance;
+    if(!player) return false;
+    player.says(message.replace(/\{foul\}/g,'🤬'));
   }
   function startDragKnob(e){
     wrapper.dragStart = e.screenY;
@@ -314,19 +408,29 @@ self.room = (() => {
     }
   }
   function injectPlayers(){
+    return Promise.resolve(true);
     return myself.randos().then(({results:ps}) => {
       let playersContainer = document.getElementById('players');
       return ps.map(p => {
         let playerElement = $(`<player>`);
-        $(`<img src="${p.picture.thumbnail}">`).appendTo(playerElement);
+        let pic = p.pic || p.picture && p.picture.thumbnail;
+        $(`<img src="${pic}">`).appendTo(playerElement);
         $(`<name>`).html(p.name.first).appendTo(playerElement);
         players.push(new Player(playerElement.appendTo(playersContainer)));
       });
     })
   }
+  function updatePlayers(data){
+    let playersContainer = document.getElementById('players');
+        playersContainer = d3.select(playersContainer);
+    let players = playersContainer.selectAll('player').data(data, d => d.id+d.scribbler);
+        players.enter().append('player').each(Player.create);
+        players.exit().remove();
+  }
   function artificialActivities(){
     let baseFrequency = 1;
     let chosenPlayer = myself.players[Math.floor(Math.random() * myself.players.length)];
+    if(!chosenPlayer) return false;
     chosenPlayer.says(getRandomMessage());
     clearInterval(myself.artificialInterval);
     myself.artificialInterval = setInterval(() => {

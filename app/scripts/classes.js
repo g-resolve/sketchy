@@ -9,6 +9,9 @@ class PRIVATE extends WeakMap{
       return newObj && me.set(ref,obj) && obj || obj;
     };
   }
+  INSTANCE(obj){
+    return new PRIVATE()(obj);
+  }
 }
 class DrawBuffer extends Array{
   constructor(interval){
@@ -40,44 +43,52 @@ class DrawBuffer extends Array{
   }
 }
 class Player{
-  constructor(el){
-    if(el instanceof jQuery){
-      //el = el;
-    }else if(typeof el == 'object'){
-      Object.assign(this, el);
-      el = this.element;
-    }else{
-      el = $(`<player>`);
-    }
-    this.element = el;
-    this.element.instance = this;
-    this.element.on('mouseover', () => $(pencil).hide('fast'));
-    return this;
+  constructor(data,index,el){
+    if(data && data.element) el = $(data.element);
+    else el = $('<player>');
+    this.template = document.importNode(self.player_template.content.cloneNode(true), true);
+    this.element = el.append(this.template);
+    this.element.data('instance',this).on('mouseover', () => $(pencil).hide('fast'));
+    Object.assign(this, data||{});
+    return data ? data.instance = this : this;
   }
   get element(){
     return P(this).element;
   }
   set element(v){
-    return P(this).element = v;
+    return P(this).element = $(v);
+  }
+  get scribbler(){
+    return this.element.attr('scribbler');
+  }
+  set scribbler(v){
+    this.element.attr('scribbler',v?'':null);
   }
   get name(){
-    return this.getOrMake('name').html();
+    return this.el('name').html();
   }
   set name(v){
-    return this.getOrMake('name').html(v);
+    return this.el('name').html(v);
   }
-  getOrMake(tag){
-    let element = this.element.children(tag);
-    if(!element.length){
-      element = $(`<${tag}>`).appendTo(this.element);
-    }
-    return element;
+  get pic(){
+    return this.el('img').attr('src');
+  }
+  set pic(v){
+    return this.el('img').attr('src',v);
+  }
+  el(tag){
+    return $(tag, this.element);
   }
   says(message){
-    message = message && Promise.resolve(message);
+    message = Promise.resolve(message||'');
     message.then(m => {
       M.add({from: this.name, content: m});
     });
+  }
+  static create(data, index, el){
+    P(self).players = P(self).players || {};
+    let player = new Player(Object.assign(data,{element: el[index]}));
+    return P(self).players[player.id] = player;
   }
 }
 class Messenger{
@@ -96,8 +107,8 @@ class Messenger{
   }
   cleanup(){
     let messages = this.messages.children().toArray();
-    if(!this.messages.length) return false;
-    messages.splice(-10);
+    if(!this.messages.length || (this.messages.length <= 10)) return false;
+    messages.splice(10);
     this.messages.get(0).scrollTo(0,this.messages.height())
     messages.forEach(m => m.remove());
   }
@@ -120,7 +131,7 @@ class Socket{
     let ws = P(this).ws = new WebSocket('ws://' + appURL.hostname + path);
     ws.addEventListener('open',(e) => {
       promise.then(this);
-      //this.startKeepAlive();
+      this.startKeepAlive();
       this.onopen(e);
     });
     ws.addEventListener('close',this.onclose.bind(this));
@@ -147,9 +158,8 @@ class Socket{
 
   }
   startKeepAlive(){
-    console.log("ping");
     this.send({ping:true});
-    return P(this).keepAliveInterval = setInterval(() => this.send({ping:true}), 5000);
+    return P(this).keepAliveInterval = setInterval(() => this.send({ping:true}), 4000);
   }
   stopKeepAlive(){
     return clearInterval(P(this).keepAliveInterval);
@@ -165,15 +175,18 @@ class Socket{
     return true;
   }
   onmessage({data:message}){
-    if(!/^[\[|\{]/.test(message)) return console.warn("Invalid message received");
-    message = JSON.parse(message);
+    if(!(arguments[0] instanceof MessageEvent)) return false;
+    /*message = {message: arguments[0]};*/
+    if(typeof message == "string" && /^[\[|\{]/.test(message)) message = JSON.parse(message);
     let pending;
     if(message.mid && (pending = this.pending[message.mid])){
       delete message.mid;
       pending.done(message);
     }else{
       Object.keys(message).forEach(k => {
+
         let eventData = message[k];
+        //console.log(`Room: "${k}":`,eventData);
         let subscribers, subs = P(this).subscriptions;
         if(subscribers = subs[k]){
           subscribers.forEach(sub => sub.el.dispatchEvent(new CustomEvent(k, {detail: eventData})))
@@ -224,8 +237,11 @@ class ROUTER{
               return {params: args.vars, start: () => S.go('rooms')}
             }
           },
-          '/login': {
+          'login': {
             view: 'login'
+          },
+          'wait': {
+            view: 'wait'  
           },
           '/vote-restart':{
             init(args, template){
@@ -298,7 +314,7 @@ class ROUTER{
         let reqPath = path;
         path = this.findPath(path);
         if(!path) return Promise.resolve(false);
-        
+        path.vars && Object.assign(path.vars, options.params||{});
         let argsToPass =  Object.assign({},this.params,{vars: path.vars});
         let parent = options.overlay?self.overlay.cleanup():self.content;
         return this.getTemplate(path.view).then(t => t.appendTo(parent)).then(t => {
@@ -308,7 +324,7 @@ class ROUTER{
             //let init = path.init.call(null, argsToPass, t);
             if(!(init instanceof Promise)){ init = Promise.resolve(init) }
             if(options.overlay){
-              window.history.pushState(Object.assign({overlay: reqPath}, this.params, options), path.title, (this.currentPath||reqPath) + '?o=' + encodeURIComponent(reqPath));   
+              options.history && window.history.pushState(Object.assign({overlay: reqPath}, this.params, options), path.title, (this.currentPath||reqPath) + '?o=' + encodeURIComponent(reqPath));   
             }else{
               window.history.pushState(Object.assign({}, this.params, options), path.title, reqPath);   
               this.currentPath = reqPath;
@@ -384,7 +400,7 @@ class ROUTER{
         return promise.then(t => {
             let ss = [$(`link[for=${name}]`),$(`<link rel="stylesheet" href="/css/${name}.css" for="${name}">`)].find(ss => ss.length)
             let jsPromise = new Promise(res => {
-              if(self[name] && (self[name].bootstrap || self[name].bootstrap)) return res(true);
+              if(self[name] && (self[name].bootstrap || self[name].init)) return res(true);
               $.getScript(`/scripts/${name}.js`).done(res)
               .catch(res.bind(null,false))
             });
@@ -393,6 +409,7 @@ class ROUTER{
             //let jsPromise = new Promise(res => js.appendTo(document.head).on('load', res));
             return Promise.all([ssPromise,jsPromise])
               .then(() => $(`<section class="wrapper ${name}">`).prop('name',name).html(t))
+              .catch(e => {debugger;})
         });
     }
     traverse(path, pathObj){

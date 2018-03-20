@@ -2,12 +2,28 @@
   <div id="announce">
     <div id="announce-round">
       <span id="announce-round-text">Round</span>
-      <span id="announce-round-number">1</span>
+      <span id="announce-round-number" data-value="1"></span>
     </div>
     <div id="announce-countdown">
       <span id="announce-countdown-text">starts in</span>
-      <span id="announce-countdown-number">5</span>
+      <span id="announce-countdown-number" data-value="5"></span>
     </div>
+  </div>
+</template>
+<template id="results-template">
+  <div id="results">
+    <table id="results-list">
+      <thead>
+        <tr>
+          <th name="name">Player</th>
+          <th name="guessed">Guessed</th>
+          <th name="points">Points</th>
+          <th name="notes"></th>
+        </tr>
+      </thead>
+      <tfoot></tfoot>
+      <tbody></tbody>
+    </table>
   </div>
 </template>
 <div id="word"></div>
@@ -24,3 +40,4 @@
     <button name="guess-button">Guess</button>
  </form>
 </div>
+<div id="clock"></div>

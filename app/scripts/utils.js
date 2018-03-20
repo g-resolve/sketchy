@@ -12,6 +12,26 @@ function guid(size) {
     }
     
 }
+function createCountdown(time, interval, tick, done){
+    if(!tick) return false;
+    let starter, runner, killer;
+    let remote = {kill: () => {
+        clearTimeout(starter);
+        clearTimeout(killer);
+        clearInterval(runner);
+    }, timeLeft: time};
+    let trimTime = time % 1000;
+    let timeRemaining = time - trimTime;
+    starter = setTimeout(() => {
+      remote.timeLeft = timeRemaining;
+      runner = setInterval(() => tick(remote.timeLeft-=1000), interval||1000);
+      killer = setTimeout(() => {
+        clearInterval(runner);
+        return done ? done() : true;
+      }, timeRemaining);
+    }, trimTime);
+    return remote;
+}
 function safeObject(data){
     if(!data){
         data = {};

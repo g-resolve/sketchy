@@ -16,6 +16,9 @@ ws-letter{
   margin: 10px;
   font-size: 25px;
 }
+#overlay:not(:empty) ~ #content #pencil{
+  display: none !important;
+}
 #pencil{
   width: 35vw;
   height: 30vw;
@@ -51,6 +54,7 @@ ws-letter{
   /* padding-left: 220px; */
   grid-column: 2;
   grid-row: 1 / span 2;
+  box-sizing: border-box;
 }
 #players player{
   display: grid;
@@ -68,6 +72,9 @@ ws-letter{
   transition: all 0.2s ease-out;
   grid-column: 2;
   min-width: 150px;
+}
+#players player[scribbler]:after{
+  background: linear-gradient(to right, #FFC107 60%, #FF9800 90%, #71503e);
 }
 #players message:first-of-type{
   margin-top: 20px;
@@ -110,6 +117,7 @@ ws-letter{
 }
 #players player:first-of-type{
   padding-top: 18px;
+  height: 60px;
 }
 #players player:first-of-type:after{
     height: calc(100% - 20px);
@@ -117,10 +125,23 @@ ws-letter{
 }
 #players player:last-of-type{
   padding-bottom: 18px;
+  height: 60px;
 }
 #players player:last-of-type:after{
     height: calc(100% - 20px);
     bottom: 18px;
+}
+#players player:first-of-type:last-of-type{
+  height: 80px;
+  padding: 20px;
+  padding-right: 0;
+}
+#players player:first-of-type:last-of-type:hover{
+  padding-left: 10px;
+}
+
+#players player:first-of-type:last-of-type:after{
+  height: calc(100% - 36px);
 }
 #players player:after{
   content: '';
@@ -159,7 +180,7 @@ player img{
   vertical-align: middle;
   border-radius: 50px;
   padding: 2px;
-  width: 80%;
+  width: 42px;
 }
 player message{
   position: absolute;
@@ -256,11 +277,9 @@ player message{
 #messages message:before{
   content: attr(timestamp) " " attr(from) ": ";
 }
-
+#results,
 #announce{
   position: absolute;
-  width: 300px;
-  height: 200px;
   background: linear-gradient(#FFF, #EEE);
   top: 20%;
   left: 30%;
@@ -271,7 +290,13 @@ player message{
   backface-visibility: hidden;
   animation: pop 6s ease-in-out 0s 1 forwards;
   transform-origin: 50% 10%;
+  z-index: 10;
 }
+#announce{
+  width: 300px;
+  height: 200px;
+}
+
 #announce-countdown{
   text-align: center;
   margin-top: 20px;
@@ -285,6 +310,9 @@ player message{
 #announce-round-text{
 /*   animation: slam 1s ease-in 0.4s forwards; */
   display: inline-block;
+}
+#announce-round-number:after{
+  content: attr(data-value);
 }
 #announce-round-number{
   font-size: 80px;
@@ -302,6 +330,91 @@ player message{
   opacity: 1;
   vertical-align: middle;
   display: inline-block;
+}
+#results{
+  width: auto;
+  height: 300px;
+  top: 40%;
+  left: 50%;
+  min-height: 200px;
+  /* animation: pop 6s ease-in-out 0s infinite forwards; */
+  left: 50%;
+  transform: scale(1) translate(-50%, -50%);
+  animation: none;
+}
+#results-list{
+  border-collapse: collapse;
+}
+#results-list th{
+  background: #CCC;
+}
+#results-list tr td, #results-list tr th{
+  border: 1px solid #CCC;
+  padding: 0px 10px;
+}
+#clock:empty{
+  border-color: #AAA;
+  background: #CCC;
+}
+#clock:empty:before{
+  content: ':)';
+  font-size: 40px;
+  line-height: 77px;
+  color: #AAA;
+  transform: rotate(90deg);
+  display: block;
+  transition: all 0.2s cubic-bezier(0.42, 0, 0.46, 1.42);
+}
+#clock.intense{
+  font-size: 50px;
+  transition: all 0.2s ease-in-out;
+  animation: pulse 1s cubic-bezier(0.42, 0, 0.17, 1.62) 0.5s 100;
+}
+@keyframes pulse{
+  0%{
+    transform: scale(1.0);
+    border: 5px solid #F44336;
+    color: #B71C1C;
+  }
+  40%{
+    transform: scale(1.0);
+    border: 5px solid #F44336;
+    color: #B71C1C;
+  }
+  50%{
+    transform: scale(1.2);
+    border: 5px solid #F44336;
+    color: #ff0000;
+  }
+  60%{
+    transform: scale(1.2);
+    border: 5px solid #F44336;
+    color: #B71C1C;
+  }
+  100%{
+    transform: scale(1.0);
+    border: 5px solid #F44336;
+    color: #B71C1C;
+  }
+}
+#clock{
+  position: absolute;
+  display: block;
+  right: 10px;
+  top: 10px;
+  font-size: 40px;
+  text-align: center;
+  line-height: 70px;
+  color: #33691E;
+  width: 80px;
+  transform: rotate(8deg);
+  height: 80px;
+  border: 5px solid #8BC34A;
+  border-radius: 50px;
+  box-shadow: -10px 10px 20px rgba(0, 0, 0, 0.5);
+  background: #FFF;
+  font-weight: bold;
+  transition: all 0.2s cubic-bezier(0.42, 0, 0.46, 1.42);
 }
 @keyframes pop{
   0% {
@@ -401,4 +514,3 @@ player message{
     <span id="announce-countdown-number">5</span>
   </div>
 </div>
-*/
