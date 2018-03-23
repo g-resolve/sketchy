@@ -56,6 +56,7 @@ var wait = (()=>{
       player.append('img').attr('src',d => d.pic);
       player.append('span').classed('name',true).text(d => d.name);
     }
+    return Promise.resolve(document.querySelector('#wait'));
   }
   myself.update = myself.bootstrap;
   function ticker(time){

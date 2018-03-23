@@ -18,7 +18,7 @@ const WORD_CHOICES_COUNT = 6;
 class Room{
   constructor(config){
     P(this).players = new Map();
-    let override = {playersToStart: 2, turnTime: 60000, rounds: 10, startDelay: 5 * 1000};
+    let override = {playersToStart: 2, turnTime: 15000, rounds: 10, startDelay: 5 * 1000};
     Object.assign(this, this.defaultConfig, config||{}, override);
     return this;
   }

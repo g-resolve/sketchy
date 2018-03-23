@@ -329,7 +329,7 @@ class ROUTER{
               window.history.pushState(Object.assign({}, this.params, options), path.title, reqPath);   
               this.currentPath = reqPath;
             }
-            return init.then(r => Object.assign(safeObject(chain), safeObject(r)));
+            return init.then(r => Object.assign({template: t}, safeObject(chain), safeObject(r)));
         });
 
     }

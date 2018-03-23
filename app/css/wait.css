@@ -1,20 +1,8 @@
-.wrapper.wait{
-  background: none;
+
+.leaderboard{
+  display: none;
 }
-#wait{
-  width: 400px;
-  margin: auto;
-  display: block;
-  background: #8BC34A;
-  height: auto;
-  min-height: 200px;
-  border: 5px solid #FFF;
-  border-radius: 20px;
-  position: relative;
-  top: 40%;
-  transform: translateY(-50%);
-}
-#wait time{
+.leaderboard time{
   position: absolute;
   font-size: 30px;
   top: -40px;
@@ -25,17 +13,17 @@
   display: block;
   left: 0;
 }
-#wait time:before{
+.leaderboard time:before{
   content: "Waiting for more players: ";
   color: rgba(0,0,0,0.5);
   font-size: 1rem;
 }
-#wait img{
+.leaderboard img{
   height: 25px;
   vertical-align: middle;
 }
 
-#wait li{
+.leaderboard li{
   list-style: none;
   /* border-bottom: 1px solid #FFF; */
   width: auto;
@@ -55,7 +43,7 @@
   perspective: 200px;
 }
 
-#wait li > div{
+.leaderboard li > div{
   position: relative;
   height: 25px;
   transform-style: preserve-3d;
@@ -64,7 +52,7 @@
   /* perspective: 55px; */
   /* animation: swing 1.5s ease-in 0s infinite; */
 }
-#wait li > div:after{
+.leaderboard li > div:after{
   display: block;
   content: '';
   width: 100%;
@@ -74,22 +62,22 @@
   top: 0;
   z-index: 2;
 }
-#wait li > div:empty{
+.leaderboard li > div:empty{
 /*  background: linear-gradient(#8BC34A, #558B2F); */
 }
-#wait li > div:empty:after{
+.leaderboard li > div:empty:after{
   box-shadow: inset 0px 0px 2px #000;
 }
-#wait li > div.flipped{
+.leaderboard li > div.flipped{
   transform: rotateX(180deg);
 }
-#wait li > div > span{
+.leaderboard li > div > span{
   backface-visibility: hidden;
   position: absolute;
   display: block;
   width: 100%;
 }
-  #wait li > div .front{
+  .leaderboard li > div .front{
     transform: rotate(0deg);
     z-index: 2;
     width: 100%;
@@ -97,24 +85,24 @@
     width: 100%;
     background: linear-gradient(#8BC34A, #558B2F);
   }
-  #wait li > div .back{
+  .leaderboard li > div .back{
     transform: rotateX(180deg);
     background: linear-gradient(#8c8c8c, #555 90%);
   }
-  #wait li > div .back:empty{
+  .leaderboard li > div .back:empty{
     z-index: 1;
   }
-  #wait li > div .back:empty:after{
+  .leaderboard li > div .back:empty:after{
     content: 'Such empty';
     display: inline-block;
     padding: 5px;
   }
-#wait buttons{
+.leaderboard buttons{
   margin: 10px;
   display: block;
 }
 
-#waiting_players{
+.leaderboard-players{
   margin: 0;
   display: flex;
   flex-flow: column wrap;

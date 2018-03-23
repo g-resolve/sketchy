@@ -8,9 +8,12 @@ self.room = (() => {
       drawing = false, 
       guessedWord = false,
       trace = [], 
+      leaderboard,
       myself = {},
       playerWrapper = false,
       wrapper = false,
+      morpheus = false,
+      clock = false,
       canvasWrapper = false,
       activity = false,
       messageKnob = false,
@@ -32,7 +35,8 @@ self.room = (() => {
     pencil: {get: () => pencil}, 
     ctx: {get: () => ctx},
     drawing: {get: () => drawing},
-    audio: {get: () => audio}
+    audio: {get: () => audio},
+    morph: {value: morph}
   });
   myself.bootstrap = (args) => {
     let roomURL = 'room/' + args.vars.rid;
@@ -92,13 +96,16 @@ self.room = (() => {
     S.subscribe(self, 'nextRoundCountdown', e => countdownTick(e.detail));
     S.subscribe(self, 'nextTurnCountdown', e => endTurn(e.detail));
     //S.subscribe(self, 'startCountdown', e => countdownTick(e.detail));
-    S.subscribe(self, 'wait', e => updateWaitScreen(e.detail));
-    S.subscribe(self, 'startCountdown', e => updateWaitScreen(e.detail));
+    S.subscribe(self, 'wait', e => updateLeaderboard(e.detail));
+    S.subscribe(self, 'startCountdown', e => updateLeaderboard(e.detail));
     S.subscribe(self, 'room', e => updateRound(e.detail));
     S.subscribe(self, 'message', e => receiveMessage(e.detail));
 
     wrapper = document.querySelector('.room.wrapper');
+    leaderboard = new Leaderboard();
+    morpheus = document.querySelector('#morpheus');
     canvasWrapper = document.querySelector('#canvas');
+    clock = document.querySelector('#clock');
     canvas = document.querySelector('canvas');
     pencil = document.querySelector('#pencil');
     messageKnob = document.querySelector("#knob");
@@ -107,6 +114,11 @@ self.room = (() => {
     messageKnob.addEventListener('mousedown', startDragKnob);
     canvasWrapper.addEventListener('mousedown', redraw);
     canvasWrapper.addEventListener('mouseup', stopdraw);
+    morpheus.addEventListener('transitionend', e => {
+      morpheus.classList.remove('morphing');
+      morpheus.callback();
+    });
+
     var mc = new Hammer.Manager(wrapper, {recognizers: [[Hammer.Pan]]});
     mc.on('pan',e => {
       let vel = Math.sqrt(Math.abs(e.velocity));
@@ -148,14 +160,27 @@ self.room = (() => {
       })
     })
   }
-  function updateWaitScreen(data){
-    if(!Q('.wrapper.wait')) return R.show('wait',{overlay:true, params: data});
-    else self.wait.update({vars:data});
+  function updateLeaderboard(data){
+
+    morph(leaderboard.update(data));
+    //let wait;
+    //if(!Q('.wrapper.wait')) wait = R.show('wait',{overlay:true, params: data}).then(d => d.template);
+    //else wait = self.wait.update({vars:data});
+    
   }
   function announce(){
     let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
     announcement.querySelector('#announce-round-number').dataset.value = room.currentRound;
-    wrapper.append(document.importNode(announcement, true));
+    morph(document.importNode(announcement, true));
+    //wrapper.append(document.importNode(announcement, true));
+  }
+  function morph(el){
+    morpheus.classList.value = 'morphing ' + $(el).prop('id') || $(el).prop('class');
+    morpheus.callback = () => {
+      morpheus.innerHTML = '';
+      morpheus.append($(el).get(0));  
+    }
+    
   }
   function results(room){
     console.log("Player Stats", room.playerStats);
@@ -168,7 +193,7 @@ self.room = (() => {
       if(results = wrapper.querySelector("#results")) return results;
       results = $("#results-template").prop('content').firstElementChild.cloneNode(true);
       results = document.importNode(results, true);
-      wrapper.append(results);
+      morph(results);
       return results;
     })();
     
@@ -219,7 +244,7 @@ self.room = (() => {
     }
   }
   function startNewTurn(turn){
-    $("#results").remove();
+    morph($('<div id="clock">'))
     $('#overlay').cleanup();
     guessedWord = false;
     clearCanvas();
@@ -227,7 +252,7 @@ self.room = (() => {
     updateClock(turn)
   }
   function startNewRound(round){
-    $("#announce").remove();
+    morph(self.clock);
     $('#overlay').cleanup();
     guessedWord = false;
     clearCanvas();
@@ -259,7 +284,7 @@ self.room = (() => {
     }, error => {console.error(error)})
   }
   function updateClock(turn){
-    let c = self.clock;    
+    let c = morpheus || self.clock;    
     
     if(room.drawCountdown) room.drawCountdown.kill();
    
@@ -267,10 +292,10 @@ self.room = (() => {
     function tick(timeLeft){
       timeLeft = timeLeft/1000;
       c.innerHTML = timeLeft;
-      if(timeLeft <= 50){
-        c.classList.value = 'intense';
+      if(timeLeft <= 10){
+        c.classList.value = 'clock intense';
       }else{
-        c.classList.value = '';
+        c.classList.value = 'clock';
       }
     }
     function done(){
@@ -530,3 +555,91 @@ self.room = (() => {
   }
   return myself;
 })();
+
+/**
+ * Leaderboard 
+ */
+
+class Leaderboard {
+  constructor(parent){
+    this.template = document.importNode(document.querySelector('template#leaderboard').content.cloneNode(true), true);
+    this.lbContainer = this.template.querySelector('.leaderboard');
+    this.lbpContainer = this.template.querySelector('.leaderboard-players');
+    this.lbtContainer = this.template.querySelector('time');
+    if(parent) $(this.lbContainer).appendTo(parent)
+  }
+  get waitingPlayersElement(){
+    return self.waiting_players;
+  }
+  update({room,timeLeft}){
+    this.lbpContainer.style.height = (((room.seats * 30) / 2) >> 0) + 10;
+    let seatList = new Array(room.seats).fill({}).map((v,i) => room.playerList[i] || {});
+    //room.playerList.forEach(p => seatList.splice(room.playerSeats[p.id]-1, 1, p));
+    this.ticker(timeLeft);
+    let entering, cards;
+    let waitingPlayers = d3
+      .select(this.lbpContainer)
+      .selectAll('li')
+      .data(seatList);
+    
+    entering = waitingPlayers.enter().append('li');
+    waitingPlayers.merge(entering).call(updateFlipper);
+    //updating = waitingPlayers.selectAll('> div');
+    function updateFlipper(selection){
+      cards = selection
+        .selectAll('div')
+        .data(d => [d]);
+      entering = cards.enter().append('div').call(card => {
+        card.append('span').classed('front',true);
+        card.append('span').classed('back',true);
+      });
+      //.classed('flipped',d => !!d.id);
+      cards.merge(entering).call(updateCard);
+    }
+    function updateCard(backOfCard){
+      backOfCard.classed('flipped',false).transition()
+      .delay((d,i,e) => e[i].classList.contains('flipped') ? 1000 : 0)
+      .on('end', () => {
+        let innerBackOfCard = backOfCard.selectAll('span.back')
+          .data(d => [d])
+          .selectAll('span.inner-back')
+          .data(d => [d], (d,i) => d.id);
+        innerBackOfCard.exit().remove();
+        innerBackOfCard.enter().append('span').classed('inner-back',true).call(updatePlayer);
+        backOfCard
+          .each((d,i,e) => {
+            if(!d.id) return;
+            let sel = d3.select(e[i]);
+            sel.transition().delay(Math.random()*1000).on('end', () => sel.classed('flipped',true));
+          })
+
+      });
+
+        //.call(d => d3.selectAll(d.nodes()).classed('flipped',d => !!d.id));
+        
+    }
+    function updatePlayer(player){
+      player.append('img').attr('src',d => d.pic);
+      player.append('span').classed('name',true).text(d => d.name);
+    }
+    return this.lbContainer;
+
+  }
+  ticker(time){
+    let el = this.lbtContainer;
+    this.tickerInterval && this.tickerInterval.kill();
+    this.tickerInterval = createCountdown(time, 1000, tick, done);
+    function done(){
+      //Done!
+    }
+    function tick(timeLeft){
+      timeLeft = timeLeft/1000;
+      el.innerHTML = timeLeft;
+      if(timeLeft <= 10){
+        el.classList.value = 'clock intense';
+      }else{
+        el.classList.value = 'clock';
+      }
+    }
+  }
+}
