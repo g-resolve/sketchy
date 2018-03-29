@@ -115,8 +115,10 @@ self.room = (() => {
     canvasWrapper.addEventListener('mousedown', redraw);
     canvasWrapper.addEventListener('mouseup', stopdraw);
     morpheus.addEventListener('transitionend', e => {
+      if(e.target.id != 'morpheus') return true;
       morpheus.classList.remove('morphing');
-      morpheus.callback();
+      clearTimeout(morpheus.callbackBuffer);
+      morpheus.callbackBuffer = setTimeout(morpheus.callback.bind(morpheus,e), 10);
     });
 
     var mc = new Hammer.Manager(wrapper, {recognizers: [[Hammer.Pan]]});
@@ -169,14 +171,20 @@ self.room = (() => {
     
   }
   function announce(){
-    let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
-    announcement.querySelector('#announce-round-number').dataset.value = room.currentRound;
-    morph(document.importNode(announcement, true));
+    debugger;
+    morph(leaderboard.update(data));
+//     let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
+//     announcement.querySelector('#announce-round-number').dataset.value = room.currentRound;
+    
+    //morph(document.importNode(announcement, true));
     //wrapper.append(document.importNode(announcement, true));
   }
   function morph(el){
-    morpheus.classList.value = 'morphing ' + $(el).prop('id') || $(el).prop('class');
-    morpheus.callback = () => {
+    if(room.drawCountdown) room.drawCountdown.kill();
+    console.log("Morphing into ", el);
+    morpheus.classList.value = 'morphing ' + ($(el).prop('id') || $(el).prop('class'));
+    morpheus.callback = (e) => {
+      //console.log("E", e);
       morpheus.innerHTML = '';
       morpheus.append($(el).get(0));  
     }
@@ -259,7 +267,9 @@ self.room = (() => {
     updateRound(round);
   }
   function endTurn(round){
-    results(round.room);
+
+    morph(leaderboard.update(round));
+    //results(round.room);
     updateRound(round);
   }
   function endRound(round){
@@ -290,6 +300,7 @@ self.room = (() => {
    
     room.drawCountdown = createCountdown(turn.drawTimeLeft, 1000, tick, done);
     function tick(timeLeft){
+      //console.log("TICK!!");
       timeLeft = timeLeft/1000;
       c.innerHTML = timeLeft;
       if(timeLeft <= 10){
@@ -573,7 +584,7 @@ class Leaderboard {
   }
   update({room,timeLeft}){
     this.lbpContainer.style.height = (((room.seats * 30) / 2) >> 0) + 10;
-    let seatList = new Array(room.seats).fill({}).map((v,i) => room.playerList[i] || {});
+    let seatList = new Array(room.seats).fill({}).map((v,i) => Object.assign({}, room.playerList[i] || {}, room.playerStats[i]));
     //room.playerList.forEach(p => seatList.splice(room.playerSeats[p.id]-1, 1, p));
     this.ticker(timeLeft);
     let entering, cards;
