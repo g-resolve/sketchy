@@ -1,0 +1,24 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "sourceMaps": false,
+            "name": "Node Server",
+            "cwd": "${workspaceFolder}/server",
+            "program":"${workspaceFolder}/server/server.js"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "sourceMaps": false,
+            "name": "Room",
+            "url": "http://localhost/room/60b25918-dfe7-4a0d-2876-68460877c6b1",
+            "webRoot": "${workspaceFolder}/app"
+        }
+    ]
+}

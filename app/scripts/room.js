@@ -198,7 +198,7 @@ self.room = (() => {
     //Test this... 2
     //Test this... 3
     //WOW
-    console.log("MY TURN!!!");
+    morph(new WordBoard(wordChoices));
   }
   function results(room){
     console.log("Player Stats", room.playerStats);
@@ -581,16 +581,37 @@ self.room = (() => {
   }
   return myself;
 })();
+class Baseboard {
+  constructor(parent){
+    this.template = document.importNode(document.querySelector('template#leaderboard').content.cloneNode(true), true);
 
+  }
+}
 /**
  * Leaderboard 
  */
-
+class WordBoard{
+  constructor({wordChoices}){
+    this.template = getTemplate('board');
+    this.container = this.template.querySelector('.board');
+    this.container.innerHTML = '';
+    let wordButtons = d3.select(this.container)
+      .selectAll('button')
+      .data(wordChoices)
+  
+    let enterWordButtons = wordButtons.enter().append('button');
+    let exitWordButtons = wordButtons.exit().remove();
+    wordButtons.merge(enterWordButtons)
+      .html(d => d.word);
+    Object.defineProperty(this.container, 'component', {value: this});
+    return this.container;
+  }
+}
 class Leaderboard {
   constructor(parent){
-    this.template = document.importNode(document.querySelector('template#leaderboard').content.cloneNode(true), true);
-    this.lbContainer = this.template.querySelector('.leaderboard');
-    this.lbpContainer = this.template.querySelector('.leaderboard-players');
+    this.template = getTemplate('board');
+    this.lbContainer = this.template.querySelector('.board');
+    this.lbpContainer = this.template.querySelector('.players');
     this.lbtContainer = this.template.querySelector('time');
     if(parent) $(this.lbContainer).appendTo(parent)
   }

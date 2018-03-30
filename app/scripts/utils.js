@@ -51,6 +51,13 @@ function getAsync(){
     p.await.success = p.await.done = p.await.then;
     return p; 
 }
+function getTemplate(name){
+    let template;
+    try{
+        template = document.importNode(document.querySelector('template#'+name).content.cloneNode(true), true);
+    } catch(e){}
+    return template;
+}
 $.ajaxSetup({
     cache: true
 })

@@ -450,7 +450,7 @@ player message{
     opacity: 1;
   }
 }
-#morpheus.leaderboard{
+#morpheus.board{
   width: 400px;
   margin: auto;
   display: block;
@@ -465,7 +465,7 @@ player message{
   box-shadow: 0px 0px 50px;
   /* overflow: hidden; */
 }
-#morpheus .leaderboard{
+#morpheus .board{
   display: block;
 }
 #morpheus.clock{
@@ -488,10 +488,10 @@ player message{
 /*
 * Leaderboard
 */
-.leaderboard{
+.board{
   display: none;
 }
-.leaderboard time{
+.board time{
   position: absolute;
   font-size: 30px;
   top: -40px;
@@ -502,17 +502,17 @@ player message{
   display: block;
   left: 0;
 }
-.leaderboard time:before{
+.board time:before{
   content: "Waiting for more players: ";
   color: rgba(0,0,0,0.5);
   font-size: 1rem;
 }
-.leaderboard img{
+.board img{
   height: 25px;
   vertical-align: middle;
 }
 
-.leaderboard li{
+.board li{
   list-style: none;
   /* border-bottom: 1px solid #FFF; */
   width: auto;
@@ -532,7 +532,7 @@ player message{
   perspective: 200px;
 }
 
-.leaderboard li > div{
+.board li > div{
   position: relative;
   height: 25px;
   transform-style: preserve-3d;
@@ -541,7 +541,7 @@ player message{
   /* perspective: 55px; */
   /* animation: swing 1.5s ease-in 0s infinite; */
 }
-.leaderboard li > div:after{
+.board li > div:after{
   display: block;
   content: '';
   width: 100%;
@@ -551,22 +551,22 @@ player message{
   top: 0;
   z-index: 2;
 }
-.leaderboard li > div:empty{
+.board li > div:empty{
 /*  background: linear-gradient(#8BC34A, #558B2F); */
 }
-.leaderboard li > div:empty:after{
+.board li > div:empty:after{
   box-shadow: inset 0px 0px 2px #000;
 }
-.leaderboard li > div.flipped{
+.board li > div.flipped{
   transform: rotateX(180deg);
 }
-.leaderboard li > div > span{
+.board li > div > span{
   backface-visibility: hidden;
   position: absolute;
   display: block;
   width: 100%;
 }
-  .leaderboard li > div .front{
+  .board li > div .front{
     transform: rotate(0deg);
     z-index: 2;
     width: 100%;
@@ -574,24 +574,24 @@ player message{
     width: 100%;
     background: linear-gradient(#8BC34A, #558B2F);
   }
-  .leaderboard li > div .back{
+  .board li > div .back{
     transform: rotateX(180deg);
     background: linear-gradient(#8c8c8c, #555 90%);
   }
-  .leaderboard li > div .back:empty{
+  .board li > div .back:empty{
     z-index: 1;
   }
-  .leaderboard li > div .back:empty:after{
+  .board li > div .back:empty:after{
     content: 'Such empty';
     display: inline-block;
     padding: 5px;
   }
-.leaderboard buttons{
+.board buttons{
   margin: 10px;
   display: block;
 }
 
-.leaderboard-players{
+.board .players{
   margin: 0;
   display: flex;
   flex-flow: column wrap;
