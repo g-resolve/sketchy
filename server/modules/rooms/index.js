@@ -18,7 +18,7 @@ const WORD_CHOICES_COUNT = 6;
 class Room{
   constructor(config){
     P(this).players = new Map();
-    let override = {playersToStart: 2, turnTime: 15000, rounds: 10, startDelay: 5 * 1000};
+    let override = {playersToStart: 1, turnTime: 15000, rounds: 10, startDelay: 5 * 1000};
     Object.assign(this, this.defaultConfig, config||{}, override);
     return this;
   }
@@ -186,7 +186,7 @@ class Room{
             clearTimeout(P(this).startTimeout);
             P(this).startTimeout = setTimeout(() => this.startTurn(), this.nextTurnDelay);
             this.broadcast({nextTurnCountdown: {room: this.clean, timeLeft: this.nextTurnDelay - (Date.now() - this.countdownStartedAt)}});        
-            this.broadcast({yourturn: {wordChoices}}, this.pencilHolder);
+            this.broadcast({yourTurn: {wordChoices}}, this.pencilHolder);
           }); 
       }
     }
@@ -284,7 +284,7 @@ class Room{
     //let randomSeatOrder = new Array(this.players.length).fill().map((v,i) => i+1).sort(i => [1,-1][Math.round(Math.random())]);
     //this.players.forEach( p => this.playerSeats[p.id] = randomSeatOrder.pop());
     //this.seatsLeft = new Array(this.seats).fill().map((v,i) => i+1).slice(this.players.length);
-    this.currentRound = 0;
+    this.currentRound = this.currentTurn = 0;
     this.playerStats = new Array(this.rounds).fill().map(r => ({}));
     return this.updateState(STATES.NEXT_TURN_COUNTDOWN);
   }
@@ -321,13 +321,15 @@ class Room{
   }
   endTurn(){
     console.log("Ending Turn");
+
     if(!this.nextPencilHolder()){
       console.log("All turns given");
+      this.currentTurn = 0;
       return this.endRound();
     }
     //debugger;
     console.log("Next turn will begin", this.state);
-    return this.updateState(STATES.NEXT_TURN_COUNTDOWN);  
+    return this.updateState(STATES.NEXT_TURN_COUNTDOWN, this.currentTurn++);  
   }
   queueRevelation(){
     this.revelations = [];
@@ -374,6 +376,8 @@ class Room{
       this.state = STATES.GAME_START_COUNTDOWN;
     }else if(player && (this.state == STATES.VOTE_RESTART)){
       this.voteRestart.call(player);
+    }else if(this.state === STATES.GAME_STARTED){
+      this.state = STATES.GAME_STARTED;
     }
     console.log("State after update: ", this.state);
     return this;
@@ -395,7 +399,7 @@ class Room{
   }
   filterPlayers(){
     this.players = this.players.filter(player => player && player.id && player.socket && player.socket.readyState !== player.socket.CLOSED);
-    this.broadcast({players: this.playerList});
+    //this.broadcast({players: this.playerList});
   }
   resetKickTimer(player){
     let kickPlayer = () => {
@@ -455,7 +459,8 @@ class Room{
     if(pid instanceof Player){
       pid.send(m);
     }else if(pid){
-      let p = this.players[pid];
+      P(this);
+      let p = P(this).players.get(pid);
       if(p) p.send(m);
     }else{
       this.players.forEach(p => {

@@ -1,0 +1,1 @@
+vst param #	name	min	max	display	unit	default0	Thresh	-30	0	=	dB	01	Output	-30	0	=	dB	02	Fader Link	0	1	=	-	0

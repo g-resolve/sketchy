@@ -1,6 +1,7 @@
 
 self.room = (() => {
-  let players = new Map(), 
+  let server = {},
+      players = new Map(), 
       myGUID = guid(), 
       pencil = false, 
       canvas = false, 
@@ -36,6 +37,7 @@ self.room = (() => {
     ctx: {get: () => ctx},
     drawing: {get: () => drawing},
     audio: {get: () => audio},
+    server: {get: () => server},
     morph: {value: morph}
   });
   myself.bootstrap = (args) => {
@@ -95,7 +97,7 @@ self.room = (() => {
     S.subscribe(self, 'players', e => updatePlayers(e.detail));
     S.subscribe(self, 'nextRoundCountdown', e => countdownTick(e.detail));
     S.subscribe(self, 'nextTurnCountdown', e => endTurn(e.detail));
-    //S.subscribe(self, 'startCountdown', e => countdownTick(e.detail));
+    S.subscribe(self, 'yourTurn', e => yourTurn(e.detail));
     S.subscribe(self, 'wait', e => updateLeaderboard(e.detail));
     S.subscribe(self, 'startCountdown', e => updateLeaderboard(e.detail));
     S.subscribe(self, 'room', e => updateRound(e.detail));
@@ -115,8 +117,10 @@ self.room = (() => {
     canvasWrapper.addEventListener('mousedown', redraw);
     canvasWrapper.addEventListener('mouseup', stopdraw);
     morpheus.addEventListener('transitionend', e => {
+      if(e.target.id != 'morpheus') return true;
       morpheus.classList.remove('morphing');
-      morpheus.callback();
+      clearTimeout(morpheus.callbackBuffer);
+      morpheus.callbackBuffer = setTimeout(morpheus.callback.bind(morpheus,e), 10);
     });
 
     var mc = new Hammer.Manager(wrapper, {recognizers: [[Hammer.Pan]]});
@@ -163,24 +167,38 @@ self.room = (() => {
   function updateLeaderboard(data){
 
     morph(leaderboard.update(data));
-    //let wait;
+    //let wait;u
     //if(!Q('.wrapper.wait')) wait = R.show('wait',{overlay:true, params: data}).then(d => d.template);
     //else wait = self.wait.update({vars:data});
     
   }
   function announce(){
-    let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
-    announcement.querySelector('#announce-round-number').dataset.value = room.currentRound;
-    morph(document.importNode(announcement, true));
+    debugger;
+    morph(leaderboard.update(data));
+//     let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
+//     announcement.querySelector('#announce-round-number').dataset.value = room.currentRound;
+    
+    //morph(document.importNode(announcement, true));
     //wrapper.append(document.importNode(announcement, true));
   }
   function morph(el){
-    morpheus.classList.value = 'morphing ' + $(el).prop('id') || $(el).prop('class');
-    morpheus.callback = () => {
+    if(room.drawCountdown) room.drawCountdown.kill();
+
+    morpheus.classList.value = 'morphing ' + ($(el).prop('id') || $(el).prop('class'));
+    morpheus.callback = (e) => {
+      //console.log("E", e);
       morpheus.innerHTML = '';
       morpheus.append($(el).get(0));  
     }
     
+  }
+  function yourTurn(wordChoices){
+
+    //Test this... 1
+    //Test this... 2
+    //Test this... 3
+    //WOW
+    console.log("MY TURN!!!");
   }
   function results(room){
     console.log("Player Stats", room.playerStats);
@@ -244,12 +262,16 @@ self.room = (() => {
     }
   }
   function startNewTurn(turn){
-    morph($('<div id="clock">'))
-    $('#overlay').cleanup();
-    guessedWord = false;
-    clearCanvas();
-    updateRound(turn);
-    updateClock(turn)
+    let turnIndex = turn.currentTurn + "-" + turn.currentRound;
+    if(room.turnIndex !== turnIndex){
+      morph($('<div id="clock">'))
+      $('#overlay').cleanup();
+      guessedWord = false;
+      clearCanvas();
+      updateClock(turn);
+    }
+    room.turnIndex = turnIndex;
+    return updateRound(turn);
   }
   function startNewRound(round){
     morph(self.clock);
@@ -259,7 +281,9 @@ self.room = (() => {
     updateRound(round);
   }
   function endTurn(round){
-    results(round.room);
+
+    morph(leaderboard.update(round));
+    //results(round.room);
     updateRound(round);
   }
   function endRound(round){
@@ -267,7 +291,8 @@ self.room = (() => {
     updateRound(round);
   }
   function updateRound(round){
-    //console.log("Round Info", round);
+    if(round.pencilHolder)
+    console.log("Round Info", round);
     round = round && round.room ? round.room : round;
     updatePlayers(round.playerList);
     if(Array.isArray(round.wordMask)) updateWord(round.wordMask);
@@ -290,6 +315,7 @@ self.room = (() => {
    
     room.drawCountdown = createCountdown(turn.drawTimeLeft, 1000, tick, done);
     function tick(timeLeft){
+      //console.log("TICK!!");
       timeLeft = timeLeft/1000;
       c.innerHTML = timeLeft;
       if(timeLeft <= 10){
@@ -573,7 +599,7 @@ class Leaderboard {
   }
   update({room,timeLeft}){
     this.lbpContainer.style.height = (((room.seats * 30) / 2) >> 0) + 10;
-    let seatList = new Array(room.seats).fill({}).map((v,i) => room.playerList[i] || {});
+    let seatList = new Array(room.seats).fill({}).map((v,i) => Object.assign({}, room.playerList[i] || {}, room.playerStats[i]));
     //room.playerList.forEach(p => seatList.splice(room.playerSeats[p.id]-1, 1, p));
     this.ticker(timeLeft);
     let entering, cards;
