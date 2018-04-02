@@ -7,18 +7,19 @@ const STATES = {
   AWAITING_PLAYERS: 0,
   GAME_START_COUNTDOWN: 1,
   GAME_STARTED: 2,
-  NEXT_TURN_COUNTDOWN: 3,
-  NEXT_ROUND_COUNTDOWN: 4,
-  PODIUM: 5,
-  VOTE_RESTART: 6,
-  RESTART_COUNTDOWN: 7,
-  GAME_ENDED: 8
+  START_TURN: 3,
+  END_TURN: 4,
+  NEXT_TURN_COUNTDOWN: 5,
+  PODIUM: 6,
+  VOTE_RESTART: 7,
+  RESTART_COUNTDOWN: 8,
+  GAME_ENDED: 9,
 }
 const WORD_CHOICES_COUNT = 6;
 class Room{
   constructor(config){
     P(this).players = new Map();
-    let override = {playersToStart: 1, turnTime: 15000, rounds: 10, startDelay: 5 * 1000};
+    let override = {playersToStart: 1, turnTime: 15000, rounds: 2000, startDelay: 5 * 1000};
     Object.assign(this, this.defaultConfig, config||{}, override);
     return this;
   }
@@ -45,9 +46,9 @@ class Room{
       ranked: true,
       turnTime: 60000,
       languageFilter: true,
-      startDelay: 60000,
-      nextRoundDelay: 10000,
-      nextTurnDelay: 10000,
+      startDelay: 6000,
+      breakDelay: 1000,
+      nextTurnDelay: 1000,
       name: "Room " + id,
       drawTimeLeft: 0
     }
@@ -60,6 +61,7 @@ class Room{
     let cleanObj = Object.keys(this.defaultConfig)
       .reduce((obj,v) => Object.assign(obj, {[v]: this[v]}), {})
      //console.warn("CLEAN OBJ", cleanObj);
+     
      try{
        JSON.stringify(cleanObj)
      }catch(e){
@@ -90,13 +92,13 @@ class Room{
     if(!chosenWord) return [];
     let word = chosenWord.word;
     let reveals = this.revelations.map(r => r.letterPos);
-    let conditions = [STATES.NEXT_ROUND_COUNTDOWN, STATES.NEXT_TURN_COUNTDOWN];
+    let conditions = [STATES.END_TURN, STATES.NEXT_TURN_COUNTDOWN];
     let revealAll = (this.revelations.length > 1) && conditions.includes(this.state);
-    console.log("REVELATIONS", this.revelations, "STATE", this.state);
+    //console.log("REVELATIONS", this.revelations, "STATE", this.state);
     if(word && word.length){
       word = word.split('').map((l,i) => revealAll || / |\-/.test(l) || reveals.includes(i) ? l : '_');
     }
-    console.log("WORD MASK", word);
+    //console.log("WORD MASK", word);
     return word;
   }
   set wordMask(v){}
@@ -148,9 +150,17 @@ class Room{
   get state(){
     return this.gameState;
   }
+  get stateName(){
+    return Object.keys(STATES).find(s => STATES[s] == this.gameState)
+  }
+  /**
+   * Main State Monitor
+   */
   set state(v){
     let changed = !(v == this.state);
     this.gameState = v;
+
+    //Waiting For Players
     if(v == STATES.AWAITING_PLAYERS){
       if(changed){
         console.log("Awww, everyone left. :(");
@@ -158,8 +168,10 @@ class Room{
         delete P(this).startTimeout;
         this.killDrawClock();
       }
-      this.broadcast({wait: {room: this.clean}});
+      this.broadcast({AWAITING_PLAYERS: {room: this.clean}});
     }
+
+    //Start Game Countdown
     if(v == STATES.GAME_START_COUNTDOWN){
       if(changed){
         this.clearWords();
@@ -168,13 +180,22 @@ class Room{
         P(this).startTimeout = setTimeout(() => this.start(), this.startDelay);
       }
       let delta = Date.now() - this.countdownStartedAt;
-      if(delta > this.startDelay) this.start()
-      this.broadcast({startCountdown: {room: this.clean, timeLeft: this.startDelay - (Date.now() - this.countdownStartedAt)}});
+      if(delta > this.startDelay){
+        clearTimeout(P(this).startTimeout);
+        this.start();
+      }
+      this.broadcast({GAME_START_COUNTDOWN: {room: this.clean, timeLeft: this.startDelay - (Date.now() - this.countdownStartedAt)}});
     }
-    if(v == STATES.GAME_STARTED){
-      this.broadcast({newTurn: this.clean});
+    
+    //End Turn
+    if(v == STATES.END_TURN){
+      if(changed){
+        P(this).nextTurnTimeout = setTimeout(() => this.updateState(STATES.NEXT_TURN_COUNTDOWN), this.breakDelay);
+      }
+      this.broadcast({END_TURN: {room: this.clean}});
     }
-    if(v == STATES.NEXT_ROUND_COUNTDOWN || (v == STATES.NEXT_TURN_COUNTDOWN)){
+    //Next Turn Countdown
+    if(v == STATES.NEXT_TURN_COUNTDOWN){
       if(changed){
         this.pencilHolder = this.nextPencilHolder();
         
@@ -185,24 +206,49 @@ class Room{
             this.countdownStartedAt = Date.now();
             clearTimeout(P(this).startTimeout);
             P(this).startTimeout = setTimeout(() => this.startTurn(), this.nextTurnDelay);
-            this.broadcast({nextTurnCountdown: {room: this.clean, timeLeft: this.nextTurnDelay - (Date.now() - this.countdownStartedAt)}});        
-            this.broadcast({yourTurn: {wordChoices}}, this.pencilHolder);
+            this.broadcast({NEXT_TURN_COUNTDOWN: {room: this.clean, timeLeft: this.nextTurnDelay - (Date.now() - this.countdownStartedAt)}});        
           }); 
       }
     }
+
+    //Vote Restart
     if(v == STATES.VOTE_RESTART){
       this.voteRestart();
     }
+
+    //Restart Countdown
     if(v == STATES.RESTART_COUNTDOWN){
 
     }
+
+    //Start Game
+    if(v == STATES.GAME_STARTED){
+      this.broadcast({GAME_STARTED: this.clean});
+    }
+    
+    //End Game
     if(v == STATES.GAME_ENDED){
       this.clearWords();
-      this.broadcast({end:this.clean});
+      this.broadcast({GAME_ENDED:this.clean});
     }
     return v;
   }
+  updateStatus(player){
+    this.filterPlayers();
 
+    if(!this.enoughPlayers){
+      this.state = STATES.AWAITING_PLAYERS;
+      //toBroadcast && this.broadcast(toBroadcast);
+    }else if([STATES.AWAITING_PLAYERS,STATES.GAME_START_COUNTDOWN].includes(this.state)){
+      this.state = STATES.GAME_START_COUNTDOWN;
+    }else if(player && (this.state == STATES.VOTE_RESTART)){
+      this.voteRestart.call(player);
+    }else if(this.state === STATES.GAME_STARTED){
+      this.state = STATES.GAME_STARTED;
+    }
+    console.log("STATE", this.stateName);
+    return this;
+  }
   get playerList(){
     let players = this.players.map(p => p.clean);
     let scribbler = players.find(p => p.id == this.pencilHolder);
@@ -229,7 +275,7 @@ class Room{
   }
   
   get updateState(){
-    return (state) => {
+    return (state = new Number()) => {
       this.state = state;
       return this.updateStatus()
     }
@@ -251,14 +297,6 @@ class Room{
         clearTimeout(existing.kickTimer);
       }
       P(this).players.set(player.id, player);
-
-//       if(this.state == STATES.GAME_START_COUNTDOWN){
-//         this.playerSeats = {};
-//         let randomSeatOrder = new Array(this.players.length).fill().map((v,i) => i+1).sort(i => [1,-1][Math.round(Math.random())]);
-//         this.players.forEach( p => this.playerSeats[p.id] = randomSeatOrder.pop());
-//       }else if(this.seatsLeft.length && !this.playerSeats[player.id]){
-//         this.playerSeats[player.id] = this.seatsLeft.shift();  
-//       }
       this.resetKickTimer(player);
       player.currentRoom = this.updateStatus(player);
       return player;
@@ -291,23 +329,11 @@ class Room{
   get firstRound(){
     return this.currentRound = 0;
   }
-  startRound(){
-    //this.playerStats[this.currentRound] = this.players.map(p => ({id: p.id, guessed: false, scribbled: false, points: 0, notes: {}}));
-    this.startTurn();
-  }
-  endRound(toBroadcast){
-    let newState;
-    if(this.isComplete){
-      newState = STATES.VOTE_RESTART;
-    }else{
-      newState = STATES.NEXT_ROUND_COUNTDOWN;
-    }
-    return this.updateState(newState, this.currentRound++);
-    
-  }
+
   startTurn(wordIndex){
     P(this).chosenWord = P(this).currentWordChoices[wordIndex||0];
-    console.log("PencilHolder:",this.pencilHolder);
+    delete P(this).currentWordChoices;
+    console.log("PencilHolder:", P(this).players.get(this.pencilHolder));
     try{
       this.playerStats[this.currentRound][this.pencilHolder] = this.players.filter(p => p.id !== this.pencilHolder).map(p => ({id: p.id, guessed: false, scribbled: false, points: 0, notes: {}}));
     }catch(e){
@@ -321,15 +347,16 @@ class Room{
   }
   endTurn(){
     console.log("Ending Turn");
-
-    if(!this.nextPencilHolder()){
-      console.log("All turns given");
+    let newState = STATES.END_TURN;
+    let pHolder = this.nextPencilHolder();
+    let isComplete = this.isComplete;
+    if(isComplete){
+      newState = STATES.VOTE_RESTART;
+    }else if(!pHolder){
       this.currentTurn = 0;
-      return this.endRound();
+      this.currentRound++;
     }
-    //debugger;
-    console.log("Next turn will begin", this.state);
-    return this.updateState(STATES.NEXT_TURN_COUNTDOWN, this.currentTurn++);  
+    return this.updateState(newState); 
   }
   queueRevelation(){
     this.revelations = [];
@@ -337,7 +364,7 @@ class Room{
       //Queue on the word strategy item
       setTimeout(() => {
         this.revelations.push(wsi);
-        this.broadcast({reveal:this.wordMask});
+        this.broadcast({REVEAL:this.wordMask});
       }, wsi.revealAt)
     )
     return this;
@@ -366,37 +393,7 @@ class Room{
   save(){
 
   }
-  updateStatus(player){
-    this.filterPlayers();
 
-    if(!this.enoughPlayers){
-      this.state = STATES.AWAITING_PLAYERS;
-      //toBroadcast && this.broadcast(toBroadcast);
-    }else if([STATES.AWAITING_PLAYERS,STATES.GAME_START_COUNTDOWN].includes(this.state)){
-      this.state = STATES.GAME_START_COUNTDOWN;
-    }else if(player && (this.state == STATES.VOTE_RESTART)){
-      this.voteRestart.call(player);
-    }else if(this.state === STATES.GAME_STARTED){
-      this.state = STATES.GAME_STARTED;
-    }
-    console.log("State after update: ", this.state);
-    return this;
-  }
-  voteRestart(votes){
-    this.votes = this.votes || new Map();
-    if(!votes){
-      (this.broadcast||this.send).call(this, {voteRestart: true})  
-    }else{
-      let tally = this.playerList.map(p => (this.votes.get(p.id)||{}).restart);
-      if((tally.filter(v => v == "yes").length / tally.length) > 0.5){
-        this.init(true).then(() => this.state = STATES.GAME_START_COUNTDOWN)
-        
-      }else if((tally.filter(v => v == "no").length / tally.length) > 0.5){
-        this.state = STATES.GAME_ENDED;
-      }
-    }
-    return true;
-  }
   filterPlayers(){
     this.players = this.players.filter(player => player && player.id && player.socket && player.socket.readyState !== player.socket.CLOSED);
     //this.broadcast({players: this.playerList});
@@ -423,11 +420,32 @@ class Room{
     return Promise.all(promises)
       .then(results => results.reduce((obj,v,i) => Object.assign(obj, {[keys[i]]:v}),{}));
   }
+  voteRestart(votes){
+    this.votes = this.votes || new Map();
+    if(!votes){
+      (this.broadcast||this.send).call(this, {VOTE_RESTART: true})  
+    }else{
+      
+      let tally = this.playerList.map(p => (this.votes.get(p.id)||{}).restart);
+      if((tally.filter(v => v == "yes").length / tally.length) > 0.5){
+        this.init(true).then(() => this.updateState(STATES.GAME_START_COUNTDOWN))
+      }else if((tally.filter(v => v == "no").length / tally.length) > 0.5){
+        this.updateState(STATES.GAME_ENDED);
+      }
+    }
+    return true;
+  }
   vote(voteObj){
     if(this.state == STATES.VOTE_RESTART){
       this.votes.set(voteObj.voter.id, voteObj.vote);
+      
+      //For restart votes
       if(voteObj.vote && voteObj.vote.restart){
         this.voteRestart(this.votes)
+      }
+      //For other votes
+      if(voteObj.vote && voteObj.vote.kick){
+        this.voteKick(this.vote);
       }
       return true;
     }
@@ -446,7 +464,7 @@ class Room{
       let stat = this.playerStats[this.currentRound][this.pencilHolder].find(ps => ps.id == p.id);
       stat.guessed = guess;
     }else{
-      _return_ = () => this.broadcast({message: {from: p.id, value: g}});
+      _return_ = () => this.broadcast({MESSAGE: {from: p.id, value: g}});
     }
     g = Player.filter(g).message;
     return _return_() & true;
@@ -456,17 +474,22 @@ class Room{
     this.startTurn(i);
   }
   broadcast(m,pid){
+    let players = [];
     if(pid instanceof Player){
-      pid.send(m);
+      players.push(pid);//pid.send(m);
     }else if(pid){
-      P(this);
-      let p = P(this).players.get(pid);
-      if(p) p.send(m);
+      players.push(P(this).players.get(pid));
     }else{
-      this.players.forEach(p => {
-        p.send(m);
-      })      
+      players = this.players;
     }
+    this.players.forEach(p => {
+      let messageContent = Object.values(m)[0];
+      if((p.id == this.nextPencilHolder()) && messageContent && P(this).currentWordChoices){
+        Object.assign(messageContent.room||messageContent, {wordChoices: P(this).currentWordChoices});
+      }
+      p.send(m);
+    })      
+    
     return this;
   }
   clear(){
@@ -480,7 +503,7 @@ class Room{
   }
   resetDrawClock(time){
     this.killDrawClock();
-    console.log(this.name + ": Starting Round " + this.currentRound);
+    //console.log(this.name + ": Starting Round " + this.currentRound);
     P(this).drawClockStarted = Date.now();
     P(this).drawClock = setTimeout(this.endTurn.bind(this), time||this.turnTime)
     //P(this).drawClock = setTimeout(this.endRound.bind(this), time||this.turnTime)

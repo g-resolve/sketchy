@@ -9,8 +9,53 @@
   /* border: 5px solid red; */
   grid-column: 1 / 3;
   grid-row: 1;
+  display: flex;
   text-align: center;
+  font-size: 2rem;
+  line-height: 2rem;
+  background: #000;
 }
+ws-letter-slot{
+  display: block;
+  flex-basis: 100%;
+  width: 100%;
+  height: 40px;
+  background: #252525;
+  margin: 0px 0.5px;
+  border-top: 0;
+  perspective: 200px;
+}
+
+  ws-letter-slot .flipper{
+    transform-style: preserve-3d;
+    transform: rotateX(0deg);
+    transition: all 0.4s ease-out;
+    position: relative;
+    height: 40px;
+  }
+  ws-letter-slot .flipper.back{
+    transform: rotateX(180deg);
+  }
+    ws-letter-slot .flipper span{
+      backface-visibility: hidden;
+      transform: rotateX(180deg) translateX(-50%);
+      position: absolute;
+      width: 100%;
+      top: 0;
+      left: 50%;
+      padding: 0;
+      height: 40px;
+    }
+    ws-letter-slot .flipper span:first-of-type{
+      transform: rotate(0deg) translateX(-50%);
+    }
+        ws-letter-slot .flipper span em:not(:empty){
+          display: block;
+          width: 100%;
+          height: 100%;
+          background: #555;
+        }
+
 ws-letter{
   display: inline-block;
   margin: 10px;

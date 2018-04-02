@@ -46,41 +46,6 @@ self.room = (() => {
       .then(S.go.bind(S, roomURL))
       .then(startEngine)
   }
-    /*
-    wrapper = document.querySelector('#wrapper');
-    canvasWrapper = document.querySelector('#canvas');
-    canvas = document.querySelector('canvas');
-    pencil = document.querySelector('#pencil');
-    messageKnob = document.querySelector("#knob");
-    playerWrapper = document.querySelector('#players');
-    messageKnob.addEventListener('mousedown', startDragKnob);
-    canvasWrapper.addEventListener('mousedown', e => {});
-    window.addEventListener('mousemove', handleMouseMove);
-    ctx = canvas.getContext('2d');
-    S.onlivepaint = redraw;
-
-    canvasWrapper.addEventListener('mouseup', e => {});
-    injectPlayers().then(artificialActivities);
-    resetBounds();
-    windowEvents();
-    */
-//   };
-
-//   myself.empty = () => Router.clearTemplates() && myself;
-//   myself.show = (template, options={}) => (parent = options.overlay?overlay.cleanup():content) && Router.getTemplate(template).then(t => t.appendTo(parent)).then(t => {
-//     if(!options || !options.overlay) content.attr('class','p' + content.children().toArray().indexOf(t.get(0)));
-//   })
-//   myself.cleanup = template => {
-//     $(`link[for='${template}'], .wrapper.${template}`).remove();
-//     let children = content.children().toArray();
-//     let index = (content.attr('class')||'').slice(1);
-//     if(!children[index] && children.length){
-//       content.attr('class', 'p' + (children.length-1));
-//     }
-//   };
-//   myself.showlogin = () => Router.getTemplate('login').then(html => {
-//     $('<section>').html(html).appendTo(content);
-//   })
   function startEngine(){
     S.subscribe(self, 'end', e => {
       R.go('/');
@@ -89,30 +54,39 @@ self.room = (() => {
     S.subscribe(self, 'start', e => {
       console.log('START GAME', e.detail);
     });
-    S.subscribe(self, 'voteRestart', e => voteRestart(e.detail));
-    S.subscribe(self, 'newRound', e => startNewRound(e.detail));
-    S.subscribe(self, 'newTurn', e => startNewTurn(e.detail));
-    S.subscribe(self, 'endRound', e => endRound(e.detail));
-    S.subscribe(self, 'reveal', e => updateWord(e.detail));
-    S.subscribe(self, 'players', e => updatePlayers(e.detail));
-    S.subscribe(self, 'nextRoundCountdown', e => countdownTick(e.detail));
-    S.subscribe(self, 'nextTurnCountdown', e => endTurn(e.detail));
-    S.subscribe(self, 'yourTurn', e => yourTurn(e.detail));
-    S.subscribe(self, 'wait', e => updateLeaderboard(e.detail));
-    S.subscribe(self, 'startCountdown', e => updateLeaderboard(e.detail));
-    S.subscribe(self, 'room', e => updateRound(e.detail));
-    S.subscribe(self, 'message', e => receiveMessage(e.detail));
-
-    wrapper = document.querySelector('.room.wrapper');
+    
+    const ACTIONS = {
+      AWAITING_PLAYERS: updateBoard,
+      GAME_START_COUNTDOWN: updateBoard,
+      GAME_STARTED: startNewTurn,
+      START_TURN: startNewTurn,
+      END_TURN: endTurn,
+      NEXT_TURN_COUNTDOWN: updateBoard,
+      SELECT_WORD: selectWord,
+      PODIUM:  () => { debugger },
+      VOTE_RESTART: voteRestart,
+      RESTART_COUNTDOWN: () => { debugger },
+      GAME_ENDED: () => { debugger },
+      REVEAL: updateWord,
+      MESSAGE: receiveMessage
+    }
+    Object.keys(ACTIONS).forEach(ACTION => {
+      S.subscribe(self, ACTION, e => ACTIONS[ACTION](e.detail));
+    })
+    
+    //Components
     leaderboard = new Leaderboard();
+    wrapper = document.querySelector('.room.wrapper');
     morpheus = document.querySelector('#morpheus');
     canvasWrapper = document.querySelector('#canvas');
     clock = document.querySelector('#clock');
     canvas = document.querySelector('canvas');
     pencil = document.querySelector('#pencil');
     messageKnob = document.querySelector("#knob");
+    playerWrapper = document.querySelector('#players');    
     activity = $("#activity");
-    playerWrapper = document.querySelector('#players');
+
+    
     messageKnob.addEventListener('mousedown', startDragKnob);
     canvasWrapper.addEventListener('mousedown', redraw);
     canvasWrapper.addEventListener('mouseup', stopdraw);
@@ -164,9 +138,12 @@ self.room = (() => {
       })
     })
   }
-  function updateLeaderboard(data){
-
-    morph(leaderboard.update(data));
+  function updateBoard({room,timeLeft}){
+    if(room.wordChoices){
+      morph(new WordBoard(room.wordChoices));
+    }else{
+      morph(leaderboard.update(room,timeLeft));
+    }
     //let wait;u
     //if(!Q('.wrapper.wait')) wait = R.show('wait',{overlay:true, params: data}).then(d => d.template);
     //else wait = self.wait.update({vars:data});
@@ -174,8 +151,7 @@ self.room = (() => {
   }
   function announce(){
     debugger;
-    morph(leaderboard.update(data));
-//     let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
+    //     let announcement = $("#announce-template").prop('content').firstElementChild.cloneNode(true);
 //     announcement.querySelector('#announce-round-number').dataset.value = room.currentRound;
     
     //morph(document.importNode(announcement, true));
@@ -183,21 +159,22 @@ self.room = (() => {
   }
   function morph(el){
     if(room.drawCountdown) room.drawCountdown.kill();
+    let newHost = $(el).prop('id') || $(el).prop('class');
+    if(morpheus.classList.contains(newHost)){
+      doMorph();
+    }else{
+      morpheus.classList.value = 'morphing ' + newHost;
+      morpheus.callback = doMorph;
+    }
 
-    morpheus.classList.value = 'morphing ' + ($(el).prop('id') || $(el).prop('class'));
-    morpheus.callback = (e) => {
+    function doMorph(e){
       //console.log("E", e);
       morpheus.innerHTML = '';
       morpheus.append($(el).get(0));  
     }
     
   }
-  function yourTurn(wordChoices){
-
-    //Test this... 1
-    //Test this... 2
-    //Test this... 3
-    //WOW
+  function selectWord(wordChoices){
     morph(new WordBoard(wordChoices));
   }
   function results(room){
@@ -280,27 +257,95 @@ self.room = (() => {
     clearCanvas();
     updateRound(round);
   }
-  function endTurn(round){
+  function endTurn({room, timeLeft}){
 
-    morph(leaderboard.update(round));
+    morph(leaderboard.update(room));
     //results(round.room);
-    updateRound(round);
+    updateRound({room, timeLeft});
   }
   function endRound(round){
     announce(round.room);
     updateRound(round);
   }
   function updateRound(round){
-    if(round.pencilHolder)
-    console.log("Round Info", round);
+    //if(round.pencilHolder)
+    //console.log("Round Info", round);
     round = round && round.room ? round.room : round;
     updatePlayers(round.playerList);
     if(Array.isArray(round.wordMask)) updateWord(round.wordMask);
     resetBounds();
   }
   function updateWord(wordMask){
-    let wordEl = $("#word").empty();
-    (guessedWord||wordMask||[]).map(w => $('<ws-letter>').html(w).appendTo(wordEl))
+    wordMask = (wordMask||[]).map(letter => ({key: letter, value: letter}));
+    let slotCount = 20;
+    let midSlot = slotCount / 2;
+    let wordMaskLength =  wordMask.length;
+    let midMask = wordMaskLength / 2;
+    let startPoint = midSlot - midMask;
+    let wordEl = $("#word").get(0);
+    let letterArray = new Array(20).fill().map(e => ({key: guid(), value: ''}));
+    self.lastWordMask = self.lastWordMask || JSON.parse(JSON.stringify(letterArray));
+    [].splice.apply(letterArray, [startPoint, wordMaskLength, ...wordMask]);
+
+    self.lastWordMask = JSON.parse(JSON.stringify(letterArray));
+    letterArray = d3.select(wordEl).selectAll('ws-letter-slot').data(letterArray);
+    let entering_slots = letterArray.enter().append('ws-letter-slot');
+    let exiting_slots = letterArray.exit().remove();
+    
+    let flippers = letterArray.merge(entering_slots)
+      .selectAll('.flipper')
+      .data(d => [d]);
+    let entering_flippers = flippers.enter().append('div').classed('flipper',true);
+         entering_flippers.append('span').append('em').classed('front', true);
+         entering_flippers.append('span').append('em').classed('back', true);
+    let exiting_flippers = flippers.exit().remove();
+    
+    flippers = flippers.merge(entering_flippers).selectAll('em').data(d => [d,d]);
+    
+    flippers.each((d,i,e) => {
+      let $el = $(e[i]);
+      let $parent = $el.parents('.flipper');
+      let original = $el.data('prev');
+      let isDifferent = original !== d.value;
+      if(isDifferent){
+        isDifferent;
+      }
+      let isFlipped = $parent.is('.back');
+      let isFront = $el.is('.front');
+      if(isDifferent && isFlipped && isFront){
+        $el.html(d.value);
+        setTimeout(() => $parent.removeClass('back'), 1);
+      }else if(isDifferent && !isFlipped && !isFront){
+        $el.html(d.value);
+        $parent.addClass('back');
+      }
+      $el.data({prev: d.value});
+      console.log({isDifferent, isFlipped, isFront, element: e[i]});
+    })
+
+//     sides.merge(entering_sides).each((d,i,e) => {
+//       e = e[i];
+
+//       debugger;
+//     })
+
+    //flippers.enter().
+//     let sides = flippers.selectAll('span').data(d=>d);
+//     let entering_sides = sides.enter().append('span').attr('class', (d,i) => i ? 'back' : 'front');
+//     let exiting_sides = sides.exit().call(s => {});
+    
+//     let side = sides.merge(entering_sides).selectAll('b')
+//       .data(d => [d], d => d.value);
+//     let entering_side = side.enter().append('b');
+//     let exiting_side = side.exit().remove();
+//     side.merge(entering_side).each((d,i,e) => {
+//       e = e[i];
+//       let parent = e.parentElement;
+//       let flipper = parent.parentElement;
+      
+//     })
+    
+    //(guessedWord||wordMask||[]).map(w => $('<ws-letter>').html(w).appendTo(wordEl))
   }
   function listRooms(){
     $.getJSON('/api/rooms').promise().then(rooms => {
@@ -474,7 +519,7 @@ self.room = (() => {
   function updatePlayers(data){
     let playersContainer = document.getElementById('players');
         playersContainer = d3.select(playersContainer);
-    let players = playersContainer.selectAll('player').data(data, d => d.id+d.scribbler);
+    let players = playersContainer.selectAll('player').data(data||[], d => d.id+d.scribbler);
         players.enter().append('player').each(Player.create);
         players.exit().remove();
   }
@@ -591,7 +636,7 @@ class Baseboard {
  * Leaderboard 
  */
 class WordBoard{
-  constructor({wordChoices}){
+  constructor(wordChoices){
     this.template = getTemplate('board');
     this.container = this.template.querySelector('.board');
     this.container.innerHTML = '';
@@ -602,7 +647,7 @@ class WordBoard{
     let enterWordButtons = wordButtons.enter().append('button');
     let exitWordButtons = wordButtons.exit().remove();
     wordButtons.merge(enterWordButtons)
-      .html(d => d.word);
+      .html(d => d.word); 
     Object.defineProperty(this.container, 'component', {value: this});
     return this.container;
   }
@@ -618,7 +663,7 @@ class Leaderboard {
   get waitingPlayersElement(){
     return self.waiting_players;
   }
-  update({room,timeLeft}){
+  update(room,timeLeft){
     this.lbpContainer.style.height = (((room.seats * 30) / 2) >> 0) + 10;
     let seatList = new Array(room.seats).fill({}).map((v,i) => Object.assign({}, room.playerList[i] || {}, room.playerStats[i]));
     //room.playerList.forEach(p => seatList.splice(room.playerSeats[p.id]-1, 1, p));
